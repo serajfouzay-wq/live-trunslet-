@@ -36,11 +36,12 @@
 .orig b { flex: none; color: var(--lc, var(--accent)); font-size: 0.8em; letter-spacing: 0.08em; }
 .orig span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.qr { position: fixed; z-index: 3; display: none; width: 21vh; padding: 1.2vh; border-radius: 1.6vh; background: #fff; color: #10203a; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); }
+:root { --qr: 15vh; }
+.qr { position: fixed; z-index: 3; display: none; width: var(--qr); padding: 0.9vh; border-radius: 1.6vh; background: #fff; color: #10203a; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); }
 .qr.on { display: block; }
 .qr img { display: block; width: 100%; }
-.qr strong { display: block; margin-top: 0.6vh; font-size: 1.9vh; line-height: 1.2; }
-.qr small { display: block; font-size: 1.3vh; color: #51637f; word-break: break-all; margin-top: 0.3vh; }
+.qr strong { display: block; margin-top: 0.5vh; font-size: 1.35vh; line-height: 1.2; }
+.qr small { display: block; font-size: 1.05vh; color: #51637f; word-break: break-all; margin-top: 0.3vh; }
 .qr[data-pos='bottom-right'] { right: 2.4vw; bottom: 2.4vh; }
 .qr[data-pos='bottom-left'] { left: 2.4vw; bottom: 2.4vh; }
 .qr[data-pos='top-right'] { right: 2.4vw; top: 2.4vh; }
@@ -65,3 +66,8 @@
   .stage .hdr { --title-size: 3.4vh; --logo-h: 7vh; }
   .lanes[data-layout='columns'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(var(--n), minmax(0, 1fr)); }
 }
+
+/* Reserve room for the QR code so it never covers text */
+body[data-qr^='top'] .stage .hdr { min-height: calc(var(--qr) + 3.4vh); padding-inline-end: calc(var(--qr) + 2vw); }
+body[data-qr^='bottom'] .stage { padding-bottom: calc(var(--qr) + 4.8vh); }
+.blank .qr:not([data-pos='center']) { display: none; }

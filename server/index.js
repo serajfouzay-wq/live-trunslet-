@@ -91,13 +91,13 @@ server.on('upgrade', (req, socket, head) => {
   if (role === 'control' && !isLoopback(req.socket.remoteAddress)) return socket.destroy();
   if (!['control', 'display', 'phone'].includes(role)) return socket.destroy();
   if (hub.clients.size > 3000) return socket.destroy();
-  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, role, url.searchParams.get('lang')));
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, role, url.searchParams.get('lang'), url.searchParams.has('preview')));
 });
 
-wss.on('connection', (ws, role, lang) => {
+wss.on('connection', (ws, role, lang, preview) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
-  const client = hub.addClient(ws, role, isLang(lang) ? lang : null);
+  const client = hub.addClient(ws, role, isLang(lang) ? lang : null, preview);
 
   ws.on('message', (data, isBinary) => {
     if (role === 'control') return controlMessage(client, data, isBinary);

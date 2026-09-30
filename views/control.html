@@ -153,6 +153,12 @@
         <div id="lang-list" class="lang-list"></div>
         <p class="hint" id="lang-warn"></p>
       </div>
+      <div class="card">
+        <h3>Languages phones can choose</h3>
+        <p class="hint">Each phone reads in one language of its own choice. Translation only runs for languages someone is actually using, which keeps it fast and cheap.</p>
+        <div class="checks" id="phone-langs"></div>
+        <p class="hint" id="phone-stats"></p>
+      </div>
     </section>
 
     <!-- ============================ SETTINGS ========================== -->
@@ -187,9 +193,30 @@
   </main>
 
   <aside class="side">
+    <div class="card join">
+      <h3>Invite the audience</h3>
+      <div class="join-body">
+        <img id="qr" alt="QR code" width="132" height="132">
+        <div class="join-info">
+          <p class="hint" style="margin-top:0">Phones scan this, pick their language, and read along. Same Wi-Fi as this computer.</p>
+          <div class="mono" id="join-link"></div>
+          <div class="row gap" style="margin-top:8px"><button class="btn" id="copy-link">Copy link</button></div>
+        </div>
+      </div>
+      <label class="check" style="margin-top:12px"><input type="checkbox" data-set="showQR"> Show the QR code on the big screen</label>
+      <label class="f" style="margin-top:8px">QR position on the big screen
+        <select data-set="qrPos"><option value="top-right">Top right</option><option value="top-left">Top left</option><option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option><option value="center">Centre, large</option></select>
+      </label>
+    </div>
     <div class="preview">
       <div class="pv-head"><b>Big screen</b><a href="/display" target="_blank">open ↗</a></div>
       <div class="pv-screen" id="pv-screen"><iframe src="/display?preview=1" title="Screen preview" tabindex="-1"></iframe></div>
+    </div>
+    <div class="preview">
+      <div class="pv-head"><b>Phone</b>
+        <select id="pv-lang" class="mini"></select>
+      </div>
+      <div class="pv-phone" id="pv-phone"><iframe title="Phone preview" tabindex="-1"></iframe></div>
     </div>
   </aside>
 </div>

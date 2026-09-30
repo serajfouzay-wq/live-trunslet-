@@ -31,7 +31,7 @@ export const DEFAULT_SETTINGS = {
   showLabels: true,
   showSpeaker: true,
   showQR: false,
-  qrPos: 'bottom-right',
+  qrPos: 'top-right',
   blank: false,
   sourceLang: 'en', // a language code or "auto"
   speakerMode: 'single', // single | multi

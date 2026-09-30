@@ -73,10 +73,11 @@ export class Hub {
 
   /* ----------------------------------------------------------------- clients */
 
-  addClient(ws, role, lang) {
-    const client = { ws, role, lang: lang || null };
+  addClient(ws, role, lang, preview = false) {
+    const client = { ws, role, lang: lang || null, preview };
     this.clients.add(client);
     this.sendHello(client);
+    if (role === 'phone' && client.lang) this.backfill();
     this.scheduleStats();
     return client;
   }
@@ -137,6 +138,7 @@ export class Hub {
   statsMsg() {
     const stats = { display: 0, phone: 0, langs: {} };
     for (const c of this.clients) {
+      if (c.preview) continue;
       if (c.role === 'display') stats.display += 1;
       if (c.role === 'phone') {
         stats.phone += 1;

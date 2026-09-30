@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08101f">
+  <title>Live Translation</title>
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/phone.css">
+</head>
+<body>
+  <div class="bg"><div class="bg-img"></div><div class="bg-tint"></div></div>
+  <div class="app">
+    <header class="top">
+      <div class="hdr"></div>
+      <button class="lang-btn" id="lang-btn" aria-label="Change language"><span id="lang-name">Language</span> ▾</button>
+    </header>
+    <main class="feed" id="feed" aria-live="polite"></main>
+    <button class="jump" id="jump" hidden>↓ Live</button>
+    <div class="live-orig" id="live-orig" hidden></div>
+    <footer class="bar">
+      <button id="smaller" aria-label="Smaller text">A<small>−</small></button>
+      <button id="bigger" aria-label="Bigger text">A<small>+</small></button>
+      <button id="orig-toggle" aria-pressed="false">Original</button>
+      <button id="speak-toggle" aria-pressed="false" hidden>🔊 Listen</button>
+      <span class="conn" id="conn" title="Connection"></span>
+    </footer>
+  </div>
+
+  <div class="picker" id="picker" hidden>
+    <div class="sheet">
+      <h2 id="picker-title">Choose your language</h2>
+      <p id="picker-sub" class="muted"></p>
+      <div class="langs" id="picker-langs"></div>
+    </div>
+  </div>
+  <script type="module" src="/assets/js/join.js"></script>
+</body>
+</html>

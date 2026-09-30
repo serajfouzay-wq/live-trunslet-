@@ -10,6 +10,7 @@ const preview = new URLSearchParams(location.search).has('preview');
 let raf = 0;
 
 const conn = connect('display', {
+  preview,
   onMessage: (m) => { store.handle(m); schedule(); },
   onOpen: () => $('.dot').classList.remove('on'),
   onClose: () => $('.dot').classList.add('on'),
@@ -127,8 +128,10 @@ function renderOriginal(s) {
 }
 
 function renderQR(s) {
-  qrEl.classList.toggle('on', s.showQR && !!store.joinUrl);
-  if (!s.showQR || !store.joinUrl) return;
+  const on = s.showQR && !!store.joinUrl;
+  qrEl.classList.toggle('on', on);
+  if (on && !s.blank) document.body.dataset.qr = s.qrPos; else delete document.body.dataset.qr;
+  if (!on) return;
   qrEl.dataset.pos = s.qrPos;
   const img = qrEl.querySelector('img');
   const want = `/qr.svg?text=${encodeURIComponent(store.joinUrl)}`;

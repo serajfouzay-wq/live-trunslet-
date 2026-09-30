@@ -22,13 +22,13 @@ const conn = connect('control', {
   onMessage(m) {
     const type = store.handle(m);
     switch (type) {
-      case 'hello': if (m.status) status = m.status; renderAll(); break;
+      case 'hello': if (m.status) status = m.status; renderAllWithPhone(); break;
       case 'settings': renderSettings(); break;
       case 'segment': case 'tr': case 'segupdate': case 'partial': case 'clear': scheduleFeed(); break;
       case 'status': status = m; renderStatus(); break;
-      case 'viewers': viewers = m; renderStatus(); break;
+      case 'viewers': viewers = m; renderStatus(); renderPhoneLangs(); break;
       case 'notice': toast(m.message, m.level); break;
-      case 'info': net.joinUrl = m.joinUrl; renderNet(); break;
+      case 'info': net.joinUrl = m.joinUrl; renderNet(); renderJoin(); break;
       default: break;
     }
   },
@@ -162,6 +162,7 @@ function renderSettings() {
     t.classList.toggle('has', !!s[kind]);
   }
   renderLanguages();
+  renderJoin();
   scheduleFeed();
 }
 
@@ -198,6 +199,7 @@ function renderLanguages() {
     });
     list.append(row);
   });
+  renderPhoneLangs();
   $('#lang-warn').textContent = s.screenLangs.length > 4 ? `${s.screenLangs.length} languages at once: text will be smaller. The "Grid" layout works best with many languages.` : '';
 }
 
@@ -511,3 +513,62 @@ function fitPreviews() {
 }
 new ResizeObserver(fitPreviews).observe($('#pv-screen'));
 fitPreviews();
+
+/* --------------------------------------------------- phones: QR + languages */
+function renderJoin() {
+  const url = net.joinUrl || store.joinUrl;
+  if (!url) return;
+  const img = $('#qr');
+  const want = `/qr.svg?text=${encodeURIComponent(url)}`;
+  if (img.getAttribute('src') !== want) img.src = want;
+  $('#join-link').textContent = url;
+}
+$('#copy-link').onclick = async () => {
+  try { await navigator.clipboard.writeText(net.joinUrl || store.joinUrl); toast('Link copied.'); } catch { toast('Copy failed. Select the link and copy it by hand.', 'error'); }
+};
+
+function renderPhoneLangs() {
+  const s = store.settings;
+  const box = $('#phone-langs');
+  box.replaceChildren();
+  for (const L of Object.values(store.langs)) {
+    const label = document.createElement('label');
+    label.className = 'check';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = s.phoneLangs.includes(L.code);
+    cb.onchange = () => {
+      const next = cb.checked ? [...s.phoneLangs, L.code] : s.phoneLangs.filter((c) => c !== L.code);
+      if (!next.length) { cb.checked = true; return; }
+      patchSettings({ phoneLangs: next }, true);
+    };
+    label.append(cb, ` ${L.native} `);
+    const n = viewers.langs[L.code];
+    if (n) { const b = document.createElement('span'); b.className = 'badge ok'; b.textContent = `${n} reading`; label.append(b); }
+    box.append(label);
+  }
+  const total = viewers.phone;
+  $('#phone-stats').textContent = total ? `${total} phone${total === 1 ? '' : 's'} connected.` : 'No phones connected yet.';
+}
+
+/* Phone preview */
+function setupPhonePreview() {
+  const sel = $('#pv-lang');
+  sel.replaceChildren();
+  for (const L of Object.values(store.langs)) sel.append(new Option(L.native, L.code));
+  let cur = 'en';
+  try { cur = localStorage.getItem('pvLang') || 'en'; } catch { /* ignore */ }
+  sel.value = store.langs[cur] ? cur : 'en';
+  const load = () => {
+    $('#pv-phone iframe').src = `/join?preview=1&lang=${sel.value}`;
+    try { localStorage.setItem('pvLang', sel.value); } catch { /* ignore */ }
+  };
+  sel.onchange = load;
+  load();
+}
+let phonePreviewReady = false;
+const baseRenderAll = renderAll;
+function renderAllWithPhone() {
+  baseRenderAll();
+  if (!phonePreviewReady && Object.keys(store.langs).length) { phonePreviewReady = true; setupPhonePreview(); }
+}

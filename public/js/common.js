@@ -1,6 +1,6 @@
 // Shared by the big screen (display.js), the phone page (join.js) and previews.
 
-export function connect(role, { lang, onOpen, onMessage, onClose } = {}) {
+export function connect(role, { lang, preview, onOpen, onMessage, onClose } = {}) {
   let ws;
   let retry = 0;
   const api = {
@@ -11,7 +11,7 @@ export function connect(role, { lang, onOpen, onMessage, onClose } = {}) {
   };
   function open() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/ws?role=${role}${api.lang ? `&lang=${api.lang}` : ''}`);
+    ws = new WebSocket(`${proto}://${location.host}/ws?role=${role}${api.lang ? `&lang=${api.lang}` : ''}${preview ? '&preview=1' : ''}`);
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => { retry = 0; onOpen?.(); };
     ws.onmessage = (e) => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error(err); } };
