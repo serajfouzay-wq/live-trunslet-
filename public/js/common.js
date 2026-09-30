@@ -1,17 +1,17 @@
 // Shared by the big screen (display.js), the phone page (join.js) and previews.
 
-export function connect(role, { lang, preview, onOpen, onMessage, onClose } = {}) {
+export function connect(role, { langs, preview, onOpen, onMessage, onClose } = {}) {
   let ws;
   let retry = 0;
   const api = {
-    lang,
+    langs,
     send(obj) { if (ws?.readyState === 1) ws.send(typeof obj === 'string' || obj instanceof ArrayBuffer ? obj : JSON.stringify(obj)); },
     get open() { return ws?.readyState === 1; },
     get socket() { return ws; },
   };
   function open() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/ws?role=${role}${api.lang ? `&lang=${api.lang}` : ''}${preview ? '&preview=1' : ''}`);
+    ws = new WebSocket(`${proto}://${location.host}/ws?role=${role}${api.langs?.length ? `&langs=${api.langs.join(',')}` : ''}${preview ? '&preview=1' : ''}`);
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => { retry = 0; onOpen?.(); };
     ws.onmessage = (e) => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error(err); } };
@@ -39,7 +39,7 @@ export class Store {
   handle(m) {
     switch (m.type) {
       case 'hello':
-        this.settings = m.settings; this.langs = m.langs; this.joinUrl = m.joinUrl; this.partial = m.partial;
+        this.settings = m.settings; this.langs = m.langs; this.joinUrl = m.joinUrl; this.partial = m.partial; this.live = !!m.live;
         this.segments = []; this.byId.clear();
         m.segments.forEach((s) => this.#add(s));
         break;
@@ -53,6 +53,7 @@ export class Store {
       case 'settings': this.settings = m.settings; break;
       case 'clear': this.segments = []; this.byId.clear(); this.partial = null; break;
       case 'info': this.joinUrl = m.joinUrl; break;
+      case 'live': this.live = m.live; break;
       default: break;
     }
     return m.type;

@@ -7,6 +7,7 @@ export const LANGUAGES = {
   fr: { code: 'fr', name: 'French',  native: 'Français', dir: 'ltr', dg: 'fr', web: 'fr-FR', color: '#7c8cff' },
   es: { code: 'es', name: 'Spanish', native: 'Español',  dir: 'ltr', dg: 'es', web: 'es-ES', color: '#ff9f5a' },
   tr: { code: 'tr', name: 'Turkish', native: 'Türkçe',   dir: 'ltr', dg: 'tr', web: 'tr-TR', color: '#e8556d' },
+  de: { code: 'de', name: 'German',  native: 'Deutsch',  dir: 'ltr', dg: 'de', web: 'de-DE', color: '#c78bff' },
   it: { code: 'it', name: 'Italian', native: 'Italiano', dir: 'ltr', dg: 'it', web: 'it-IT', color: '#52d1a0' },
 };
 

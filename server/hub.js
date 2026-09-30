@@ -73,11 +73,11 @@ export class Hub {
 
   /* ----------------------------------------------------------------- clients */
 
-  addClient(ws, role, lang, preview = false) {
-    const client = { ws, role, lang: lang || null, preview };
+  addClient(ws, role, langs, preview = false) {
+    const client = { ws, role, langs: langs || [], preview };
     this.clients.add(client);
     this.sendHello(client);
-    if (role === 'phone' && client.lang) this.backfill();
+    if (role === 'phone' && client.langs.length) this.backfill();
     this.scheduleStats();
     return client;
   }
@@ -98,6 +98,7 @@ export class Hub {
       partial: this.currentPartial(),
       langs: LANGUAGES,
       joinUrl: this.joinUrl,
+      live: this.running,
       session: this.session,
       status: control ? this.statusMsg() : undefined,
     });
@@ -118,7 +119,7 @@ export class Hub {
   wants(client, lang) {
     if (client.role === 'control') return true;
     if (client.role === 'display') return this.settings.screenLangs.includes(lang);
-    if (client.role === 'phone') return client.lang === lang;
+    if (client.role === 'phone') return client.langs.includes(lang);
     return false;
   }
 
@@ -142,7 +143,7 @@ export class Hub {
       if (c.role === 'display') stats.display += 1;
       if (c.role === 'phone') {
         stats.phone += 1;
-        if (c.lang) stats.langs[c.lang] = (stats.langs[c.lang] || 0) + 1;
+        for (const l of c.langs) stats.langs[l] = (stats.langs[l] || 0) + 1;
       }
     }
     return { type: 'viewers', ...stats };
@@ -161,6 +162,10 @@ export class Hub {
   setStt(state, detail = '') {
     this.stt = { state, detail };
     this.broadcast(this.statusMsg(), ['control']);
+  }
+
+  setLive(live) {
+    this.broadcast({ type: 'live', live }, ['display', 'phone']);
   }
 
   notify(level, message) {
@@ -294,7 +299,7 @@ export class Hub {
 
   wantedLangs() {
     const set = new Set(this.settings.screenLangs);
-    for (const c of this.clients) if (c.role === 'phone' && c.lang) set.add(c.lang);
+    for (const c of this.clients) if (c.role === 'phone') c.langs.forEach((l) => set.add(l));
     return [...set];
   }
 
@@ -395,6 +400,7 @@ export class Hub {
     }
     this.running = true;
     this.broadcast(this.statusMsg(), ['control']);
+    this.setLive(true);
   }
 
   openDeepgram() {
@@ -436,5 +442,6 @@ export class Hub {
     this.owner = null;
     this.setStt('idle', '');
     this.broadcast(this.statusMsg(), ['control']);
+    this.setLive(false);
   }
 }

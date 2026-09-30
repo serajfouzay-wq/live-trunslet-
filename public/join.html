@@ -13,25 +13,28 @@
   <div class="app">
     <header class="top">
       <div class="hdr"></div>
-      <button class="lang-btn" id="lang-btn" aria-label="Change language"><span id="lang-name">Language</span> ▾</button>
+      <div class="livepill" id="livepill"><i></i><span>Live</span></div>
     </header>
+    <div class="chips" id="chips" aria-label="Your languages"></div>
     <main class="feed" id="feed" aria-live="polite"></main>
-    <button class="jump" id="jump" hidden>↓ Live</button>
+    <button class="jump" id="jump" hidden><svg class="ic"><use href="/assets/icons.svg#i-arrow-down"/></svg>Latest</button>
     <div class="live-orig" id="live-orig" hidden></div>
     <footer class="bar">
-      <button id="smaller" aria-label="Smaller text">A<small>−</small></button>
-      <button id="bigger" aria-label="Bigger text">A<small>+</small></button>
-      <button id="orig-toggle" aria-pressed="false">Original</button>
-      <button id="speak-toggle" aria-pressed="false" hidden>🔊 Listen</button>
+      <button id="smaller" aria-label="Smaller text"><svg class="ic"><use href="/assets/icons.svg#i-type"/></svg><span>Smaller</span></button>
+      <button id="bigger" aria-label="Bigger text"><svg class="ic big"><use href="/assets/icons.svg#i-type"/></svg><span>Bigger</span></button>
+      <button id="orig-toggle" aria-pressed="false"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg><span>Original</span></button>
+      <button id="speak-toggle" aria-pressed="false" hidden><svg class="ic"><use href="/assets/icons.svg#i-volume"/></svg><span>Listen</span></button>
       <span class="conn" id="conn" title="Connection"></span>
     </footer>
   </div>
 
   <div class="picker" id="picker" hidden>
-    <div class="sheet">
-      <h2 id="picker-title">Choose your language</h2>
-      <p id="picker-sub" class="muted"></p>
-      <div class="langs" id="picker-langs"></div>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="grab"></div>
+      <h2>Choose your languages</h2>
+      <p class="muted" id="picker-sub">Pick up to 4. You will read all of them together, the first one biggest.</p>
+      <div class="tiles" id="picker-langs"></div>
+      <button class="done" id="picker-done" disabled>Continue</button>
     </div>
   </div>
   <script type="module" src="/assets/js/join.js"></script>

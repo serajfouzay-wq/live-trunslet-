@@ -166,6 +166,23 @@ test('Deepgram: falls back to nova-2, streams audio, builds a Chinese segment', 
   ctl.ws.close();
 });
 
+test('phones can read several languages at once, including German', async () => {
+  const phone = client('phone');
+  await phone.ready;
+  phone.send({ type: 'lang', langs: ['de', 'fr', 'de', 'xx', 'ar', 'it', 'es'] }); // duplicates/invalid dropped, max 4
+  const hello = await phone.until((m) => m.type === 'hello' && m.segments.length > 0);
+  assert.ok(hello.langs.de, 'German is available');
+  const ctl = client('control');
+  await ctl.ready;
+  ctl.send({ type: 'source', lang: 'de', speakerMode: 'single' });
+  ctl.send({ type: 'stt', text: 'Guten Abend zusammen.', final: true, speechFinal: true, lang: 'de' });
+  const seg = await phone.until((m) => m.type === 'segment' && m.seg.text.startsWith('Guten Abend'));
+  assert.equal(seg.seg.src, 'de');
+  for (const l of ['fr', 'ar', 'it']) await phone.until((m) => m.type === 'tr' && m.lang === l && m.done && m.id === seg.seg.id);
+  assert.ok(!phone.msgs.some((m) => m.type === 'tr' && (m.lang === 'es' || m.lang === 'en')), 'only chosen languages are sent');
+  phone.ws.close(); ctl.ws.close();
+});
+
 test('export: srt, txt, html and json', async () => {
   const { current } = await (await api('GET', '/sessions')).json();
   const get = async (fmt, extra = '') => (await fetch(`http://${base}/api/sessions/${current}/export?format=${fmt}&langs=en,ar${extra}`)).text();

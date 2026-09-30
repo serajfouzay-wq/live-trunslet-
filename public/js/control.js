@@ -57,13 +57,25 @@ function patchSettings(p, immediate) {
 }
 
 /* -------------------------------------------------------------------- tabs */
+const PAGES = {
+  live: ['Live', 'Start listening and watch the translation appear.'],
+  design: ['Design', 'Title, logo, backgrounds and the look of every screen.'],
+  languages: ['Languages', 'What the big screen shows, and what phones can choose.'],
+  glossary: ['Glossary', 'Names and terms that must be translated the way you want.'],
+  events: ['Events', 'Save a whole setup and bring it back in one click.'],
+  transcript: ['Transcript', 'Download what was said, in any language.'],
+  settings: ['Settings', 'Keys, translation model and network.'],
+};
 $('#nav').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]');
   if (!b) return;
+  $('#page-title').textContent = PAGES[b.dataset.tab][0];
+  $('#page-sub').textContent = PAGES[b.dataset.tab][1];
   $$('#nav button').forEach((x) => x.classList.toggle('on', x === b));
   $$('.tab').forEach((x) => x.classList.toggle('on', x.id === `tab-${b.dataset.tab}`));
   try { localStorage.setItem('tab', b.dataset.tab); } catch { /* ignore */ }
 });
+$('#page-sub').textContent = PAGES.live[1];
 try { const t = localStorage.getItem('tab'); if (t) $(`#nav button[data-tab="${t}"]`)?.click(); } catch { /* ignore */ }
 
 $('#open-display').onclick = () => window.open('/display', 'display', 'width=1280,height=720');
@@ -87,6 +99,7 @@ function renderStatus() {
   const go = $('#go');
   go.classList.toggle('live', status.running);
   $('#go-text').textContent = status.running ? 'Stop listening' : 'Start listening';
+  $('#go-ico').setAttribute('href', `/assets/icons.svg#i-${status.running ? 'stop' : 'mic'}`);
   $('#engine').disabled = status.running;
 }
 
@@ -107,22 +120,33 @@ const LAYOUTS = {
 };
 const THEMES = { midnight: 'Midnight', aurora: 'Aurora', gold: 'Gold', light: 'Light', contrast: 'High contrast' };
 
+const THEME_BG = {
+  midnight: 'linear-gradient(135deg,#08101f,#16305f,#0e6b8a)', aurora: 'linear-gradient(135deg,#0a1a24,#2c1163,#0b8f7a)',
+  gold: 'linear-gradient(135deg,#070707,#2b2010,#5c4310)', light: 'linear-gradient(135deg,#f6f8fc,#dbe6f8,#c5dcf5)', contrast: 'linear-gradient(135deg,#000,#000 60%,#ffe600)',
+};
+
 function renderSource() {
   const box = $('#source');
   box.replaceChildren();
-  const opts = [['auto', 'Auto', ''], ...Object.values(store.langs).map((l) => [l.code, l.native, l.code.toUpperCase()])];
-  opts.forEach(([code, name, sub], i) => {
+  const opts = [['auto', 'Auto', '#8b9bbd'], ...Object.values(store.langs).map((l) => [l.code, l.native, l.color])];
+  opts.forEach(([code, name, color], i) => {
     const b = document.createElement('button');
     b.dataset.lang = code;
-    b.innerHTML = `<span></span><small>${i + 1}</small>`;
-    b.firstChild.textContent = name;
+    b.style.setProperty('--lc', color);
+    b.innerHTML = '<i class="dot"></i><span></span><kbd></kbd>';
+    b.querySelector('span').textContent = name;
+    b.querySelector('kbd').textContent = i + 1;
     b.onclick = () => setSource(code);
     box.append(b);
   });
   const th = $('#themes');
   th.replaceChildren();
   for (const [k, name] of Object.entries(THEMES)) {
-    const b = document.createElement('button'); b.textContent = name; b.dataset.theme = k;
+    const b = document.createElement('button');
+    b.dataset.theme = k;
+    b.innerHTML = '<i></i><span></span>';
+    b.querySelector('i').style.background = THEME_BG[k];
+    b.querySelector('span').textContent = name;
     b.onclick = () => patchSettings({ theme: k }, true);
     th.append(b);
   }
@@ -154,6 +178,7 @@ function renderSettings() {
     const k = o.dataset.out;
     o.textContent = k === 'blur' ? `${s[k]} px` : k === 'maxLines' ? s[k] : `${s[k]}${k === 'dim' || k === 'fontScale' ? '%' : ''}`;
   }
+  fillRanges();
   $$('#source button').forEach((b) => b.classList.toggle('on', b.dataset.lang === s.sourceLang));
   $$('#themes button').forEach((b) => b.classList.toggle('on', b.dataset.theme === s.theme));
   $$('#layouts button').forEach((b) => b.classList.toggle('on', b.dataset.layout === s.layout));
@@ -180,8 +205,8 @@ function renderLanguages() {
     const on = s.screenLangs.includes(code);
     const row = document.createElement('div');
     row.className = `lang-row ${on ? '' : 'off'}`;
-    row.innerHTML = '<input type="checkbox"><span class="dot"></span><span class="nm"></span><button class="btn ghost" data-d="-1">↑</button><button class="btn ghost" data-d="1">↓</button>';
-    row.querySelector('.dot').style.background = L.color;
+    row.style.setProperty('--lc', L.color);
+    row.innerHTML = '<label class="check"><input type="checkbox"></label><span class="nm"></span><button class="btn ghost" data-d="-1" aria-label="Move up"><svg class="ic"><use href="/assets/icons.svg#i-up"/></svg></button><button class="btn ghost" data-d="1" aria-label="Move down"><svg class="ic"><use href="/assets/icons.svg#i-down"/></svg></button>';
     row.querySelector('.nm').innerHTML = `${L.native}<small>${L.name}</small>`;
     const cb = row.querySelector('input');
     cb.checked = on;
@@ -204,7 +229,11 @@ function renderLanguages() {
     list.append(row);
   });
   renderPhoneLangs();
-  $('#lang-warn').textContent = s.screenLangs.length > 4 ? `${s.screenLangs.length} languages at once: text will be smaller. The "Grid" layout works best with many languages.` : '';
+  $('#lang-warn').textContent = s.screenLangs.length > 4 ? `${s.screenLangs.length} languages at once: text will be smaller. The Grid layout works best with many languages.` : '';
+}
+
+function fillRanges() {
+  for (const r of $$('input[type=range]')) r.style.setProperty('--p', `${((r.value - r.min) / (r.max - r.min)) * 100}%`);
 }
 
 /* Generic bindings for every [data-set] input */
@@ -214,6 +243,7 @@ document.addEventListener('input', (e) => {
   const k = el.dataset.set;
   const v = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
   patchSettings({ [k]: v });
+  if (el.type === 'range') el.style.setProperty('--p', `${((el.value - el.min) / (el.max - el.min)) * 100}%`);
   const out = $(`[data-out="${k}"]`);
   if (out) renderSettings();
 });
@@ -247,6 +277,7 @@ function renderFeed() {
     const L = store.langs[store.partial.lang];
     const d = document.createElement('div');
     d.className = 'fs live';
+    d.style.setProperty('--lc', L.color);
     d.innerHTML = '<div class="meta"><span class="chip"></span><span>listening…</span></div><div class="src"></div>';
     const chip = d.querySelector('.chip');
     chip.textContent = store.partial.lang.toUpperCase(); chip.style.background = L.color;
@@ -265,6 +296,7 @@ function feedItem(seg, langs) {
   const L = store.langs[seg.src] || { color: '#888', dir: 'ltr' };
   const d = document.createElement('div');
   d.className = 'fs';
+  d.style.setProperty('--lc', L.color);
   const time = new Date(seg.t ? Date.now() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   d.innerHTML = '<div class="meta"><span class="chip"></span><span class="who"></span></div><div class="src" contenteditable="plaintext-only" spellcheck="false" title="Click to correct the text; it is translated again"></div>';
   const chip = d.querySelector('.chip'); chip.textContent = seg.src.toUpperCase(); chip.style.background = L.color;
@@ -328,8 +360,7 @@ async function startMic() {
   node.port.onmessage = (e) => {
     if (e.data.pcm) { if (status.engine === 'deepgram') conn.send(e.data.pcm); }
     if (e.data.level !== undefined) {
-      const lv = Math.min(1, Math.sqrt(e.data.level) * 1.2);
-      $('#meter-bar').style.width = `${lv * 100}%`;
+      waveTarget = Math.min(1, Math.sqrt(e.data.level) * 1.2);
       if (e.data.level > 0.02) lastSound = Date.now();
     }
   };
@@ -341,7 +372,7 @@ function stopMic() {
   mic?.stream.getTracks().forEach((t) => t.stop());
   mic?.ctx.close();
   mic = null;
-  $('#meter-bar').style.width = '0';
+  waveTarget = 0;
 }
 
 function restartBrowserRecognition() {
@@ -414,7 +445,7 @@ setInterval(() => {
 addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea, select, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
   const codes = ['auto', ...Object.keys(store.langs)];
-  if (/^[1-8]$/.test(e.key) && codes[Number(e.key) - 1]) setSource(codes[Number(e.key) - 1]);
+  if (/^[1-9]$/.test(e.key) && codes[Number(e.key) - 1]) setSource(codes[Number(e.key) - 1]);
   if (e.key === 'b' || e.key === 'B') patchSettings({ blank: !store.settings.blank }, true);
   if (e.key === 'c' || e.key === 'C') conn.send({ type: 'clearScreen' });
 });
@@ -537,35 +568,39 @@ function renderPhoneLangs() {
   box.replaceChildren();
   for (const L of Object.values(store.langs)) {
     const label = document.createElement('label');
-    label.className = 'check';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = s.phoneLangs.includes(L.code);
+    const on = s.phoneLangs.includes(L.code);
+    label.className = `pick ${on ? 'on' : ''}`;
+    label.style.setProperty('--lc', L.color);
+    label.innerHTML = '<input type="checkbox"><i class="dot"></i><span></span>';
+    label.querySelector('span').textContent = L.native;
+    const cb = label.querySelector('input');
+    cb.checked = on;
     cb.onchange = () => {
       const next = cb.checked ? [...s.phoneLangs, L.code] : s.phoneLangs.filter((c) => c !== L.code);
       if (!next.length) { cb.checked = true; return; }
       patchSettings({ phoneLangs: next }, true);
     };
-    label.append(cb, ` ${L.native} `);
     const n = viewers.langs[L.code];
-    if (n) { const b = document.createElement('span'); b.className = 'badge ok'; b.textContent = `${n} reading`; label.append(b); }
+    if (n) { const b = document.createElement('span'); b.className = 'count'; b.textContent = n; label.append(b); }
     box.append(label);
   }
   const total = viewers.phone;
-  $('#phone-stats').textContent = total ? `${total} phone${total === 1 ? '' : 's'} connected.` : 'No phones connected yet.';
+  $('#phone-stats').textContent = total ? `${total} phone${total === 1 ? '' : 's'} connected.` : 'No phones connected yet. The numbers show how many people are reading each language.';
 }
 
 /* Phone preview */
 function setupPhonePreview() {
   const sel = $('#pv-lang');
   sel.replaceChildren();
-  for (const L of Object.values(store.langs)) sel.append(new Option(L.native, L.code));
-  let cur = 'en';
-  try { cur = localStorage.getItem('pvLang') || 'en'; } catch { /* ignore */ }
-  sel.value = store.langs[cur] ? cur : 'en';
+  const codes = Object.keys(store.langs);
+  for (const c of codes) sel.append(new Option(store.langs[c].native, c));
+  for (const c of codes) if (c !== 'en') sel.append(new Option(`${store.langs[c].native} + English`, `${c},en`));
+  let cur = 'ar,en';
+  try { cur = localStorage.getItem('pvLangs') || 'ar,en'; } catch { /* ignore */ }
+  sel.value = [...sel.options].some((o) => o.value === cur) ? cur : 'en';
   const load = () => {
-    $('#pv-phone iframe').src = `/join?preview=1&lang=${sel.value}`;
-    try { localStorage.setItem('pvLang', sel.value); } catch { /* ignore */ }
+    $('#pv-phone iframe').src = `/join?preview=1&langs=${sel.value}`;
+    try { localStorage.setItem('pvLangs', sel.value); } catch { /* ignore */ }
   };
   sel.onchange = load;
   load();
@@ -619,14 +654,17 @@ async function loadSessions() {
   const box = $('#tx-langs');
   if (!box.children.length) {
     for (const L of Object.values(store.langs)) {
-      const label = document.createElement('label'); label.className = 'check';
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = L.code;
-      label.append(cb, ` ${L.native}`);
+      const label = document.createElement('label'); label.className = 'pick';
+      label.style.setProperty('--lc', L.color);
+      label.innerHTML = '<input type="checkbox"><i class="dot"></i><span></span>';
+      label.querySelector('span').textContent = L.native;
+      const cb = label.querySelector('input'); cb.value = L.code;
+      cb.onchange = () => label.classList.toggle('on', cb.checked);
       box.append(label);
     }
   }
   const want = new Set(store.settings.screenLangs);
-  if (!box.dataset.init) { box.dataset.init = '1'; box.querySelectorAll('input').forEach((c) => { c.checked = want.has(c.value); }); }
+  if (!box.dataset.init) { box.dataset.init = '1'; box.querySelectorAll('input').forEach((c) => { c.checked = want.has(c.value); c.parentElement.classList.toggle('on', c.checked); }); }
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-export]');
@@ -644,3 +682,41 @@ $('#nav').addEventListener('click', (e) => {
 });
 
 try { const t = localStorage.getItem('tab'); if (t === 'events' || t === 'transcript') setTimeout(() => $(`#nav button[data-tab="${t}"]`)?.click(), 400); } catch { /* ignore */ }
+
+/* ------------------------------------------------------------- live waveform */
+const wave = $('#wave');
+const wctx = wave.getContext('2d');
+const BARS = 64;
+const hist = new Array(BARS).fill(0);
+let waveTarget = 0;
+let waveLevel = 0;
+let waveTick = 0;
+
+function drawWave(t) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = wave.clientWidth;
+  const h = 64;
+  if (wave.width !== Math.round(w * dpr)) { wave.width = Math.round(w * dpr); wave.height = h * dpr; }
+  if (status.running && status.engine === 'demo') waveTarget = store.partial ? 0.28 + 0.3 * Math.abs(Math.sin(t / 140)) * Math.random() * 1.6 : 0.03;
+  waveLevel += (waveTarget - waveLevel) * 0.4;
+  if ((waveTick += 1) % 2 === 0) { hist.shift(); hist.push(waveLevel); }
+  wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  wctx.clearRect(0, 0, w, h);
+  const gap = 4;
+  const bw = Math.max(2, (w - gap * (BARS - 1)) / BARS);
+  const grad = wctx.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0, '#3b82ff');
+  grad.addColorStop(1, '#a06bff');
+  for (let i = 0; i < BARS; i += 1) {
+    const idle = status.running ? 0 : 0.045 + 0.03 * Math.sin(t / 700 + i / 4);
+    const v = Math.max(idle, hist[i]);
+    const bh = Math.max(4, v * h * 0.95);
+    wctx.fillStyle = grad;
+    wctx.globalAlpha = status.running ? 0.55 + 0.45 * (i / BARS) : 0.3;
+    const x = i * (bw + gap);
+    if (wctx.roundRect) { wctx.beginPath(); wctx.roundRect(x, (h - bh) / 2, bw, bh, bw / 2); wctx.fill(); } else wctx.fillRect(x, (h - bh) / 2, bw, bh);
+  }
+  wctx.globalAlpha = 1;
+  requestAnimationFrame(drawWave);
+}
+requestAnimationFrame(drawWave);

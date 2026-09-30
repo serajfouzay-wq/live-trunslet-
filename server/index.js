@@ -82,6 +82,10 @@ registerLibrary(api, hub);
 app.use('/api', api);
 
 /* ------------------------------------------------------------ WebSockets */
+/** "ar,en" -> ['ar','en'] (valid, unique, at most 4: each extra language costs a translation). */
+const MAX_PHONE_LANGS = 4;
+const parseLangs = (v) => [...new Set(String(v || '').split(',').filter(isLang))].slice(0, MAX_PHONE_LANGS);
+
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
 
 server.on('upgrade', (req, socket, head) => {
@@ -91,13 +95,13 @@ server.on('upgrade', (req, socket, head) => {
   if (role === 'control' && !isLoopback(req.socket.remoteAddress)) return socket.destroy();
   if (!['control', 'display', 'phone'].includes(role)) return socket.destroy();
   if (hub.clients.size > 3000) return socket.destroy();
-  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, role, url.searchParams.get('lang'), url.searchParams.has('preview')));
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, role, parseLangs(url.searchParams.get('langs') || url.searchParams.get('lang')), url.searchParams.has('preview')));
 });
 
-wss.on('connection', (ws, role, lang, preview) => {
+wss.on('connection', (ws, role, langs, preview) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
-  const client = hub.addClient(ws, role, isLang(lang) ? lang : null, preview);
+  const client = hub.addClient(ws, role, langs, preview);
 
   ws.on('message', (data, isBinary) => {
     if (role === 'control') return controlMessage(client, data, isBinary);
@@ -114,12 +118,13 @@ wss.on('connection', (ws, role, lang, preview) => {
 function phoneMessage(client, data) {
   let m;
   try { m = JSON.parse(data.toString()); } catch { return; }
-  if (m.type === 'lang' && isLang(m.lang) && hub.settings.phoneLangs.includes(m.lang)) {
-    client.lang = m.lang;
-    hub.sendHello(client);
-    hub.backfill();
-    hub.scheduleStats();
-  }
+  if (m.type !== 'lang') return;
+  const langs = parseLangs(Array.isArray(m.langs) ? m.langs.join(',') : m.lang).filter((l) => hub.settings.phoneLangs.includes(l));
+  if (!langs.length) return;
+  client.langs = langs;
+  hub.sendHello(client);
+  hub.backfill();
+  hub.scheduleStats();
 }
 
 function controlMessage(client, data, isBinary) {

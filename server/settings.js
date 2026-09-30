@@ -62,7 +62,7 @@ const RULES = {
   dim: (v) => num(v, 0, 90),
   blur: (v) => num(v, 0, 30),
   layout: (v) => oneOf(v, LAYOUTS),
-  screenLangs: (v) => { const l = langList(v); return l && l.length ? l.slice(0, 7) : undefined; },
+  screenLangs: (v) => { const l = langList(v); return l && l.length ? l.slice(0, 8) : undefined; },
   phoneLangs: (v) => { const l = langList(v); return l && l.length ? l : undefined; },
   fontScale: (v) => num(v, 50, 160),
   uniformSize: bool,
@@ -93,7 +93,10 @@ export function sanitize(patch) {
 
 export function loadSettings() {
   try {
-    return { ...DEFAULT_SETTINGS, ...sanitize(JSON.parse(fs.readFileSync(path_, 'utf8'))) };
+    const saved = sanitize(JSON.parse(fs.readFileSync(path_, 'utf8')));
+    // Settings saved before a language existed: offer new languages to phones by default.
+    if (saved.phoneLangs && saved.phoneLangs.length === LANG_CODES.length - 1 && !saved.phoneLangs.includes('de')) saved.phoneLangs.push('de');
+    return { ...DEFAULT_SETTINGS, ...saved };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

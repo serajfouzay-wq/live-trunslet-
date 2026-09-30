@@ -2,8 +2,8 @@
 
 Speak in one language; the room reads it in many. Made for live events, run from a Windows laptop.
 
-- **Big screen**: show 1–7 languages at the same time (Arabic, English, Chinese, French, Spanish, Turkish, Italian), with your event title, logo and a background picture.
-- **Phones**: the audience scans a QR code, picks their language, and reads along on their own phone (optionally listening through the phone's speaker or earphones).
+- **Big screen**: show 1–8 languages at the same time (Arabic, English, Chinese, French, German, Spanish, Turkish, Italian), with your event title, logo and a background picture.
+- **Phones**: the audience scans a QR code, picks up to 4 languages of their own (all shown together, the first one biggest), and reads along on their own phone (optionally listening through the phone's speaker or earphones).
 - **One speaker or many**: pick the speaker's language with one key, or let it label several speakers.
 - **Made for events**: glossary for names and terms, saved events, standby screen, click-to-correct, transcripts as PDF / text / subtitles.
 
@@ -28,8 +28,8 @@ Phones need no internet of their own, only a connection to your laptop. The lapt
 
 ## Two speakers, two languages?
 
-- One person at a time: press the number key for the language they speak (**1–8**). Switching is instant.
-- **Auto** detects the language by itself, but only for the languages Deepgram's multilingual mode covers (English, Spanish, French, Italian and a few others). For **Arabic, Chinese and Turkish, pick the language** with its key.
+- One person at a time: press the number key for the language they speak (**1–9**). Switching is instant.
+- **Auto** detects the language by itself, but only for the languages Deepgram's multilingual mode covers (English, Spanish, French, Italian, German and a few others). For **Arabic, Chinese and Turkish, pick the language** with its key.
 - *Several people talking* labels speakers (Speaker 1, 2, …) inside one language.
 
 ## Tips for a great event

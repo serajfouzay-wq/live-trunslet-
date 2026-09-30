@@ -4,271 +4,270 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Live Translate · Control</title>
+  <link rel="icon" href="/favicon.ico">
   <link rel="stylesheet" href="/assets/css/control.css">
 </head>
 <body>
-<header class="top">
-  <div class="brand"><span class="mark">◐</span><b>Live Translate</b></div>
-  <div class="pills">
-    <span class="pill" id="pill-stt" data-state="idle"><i></i><span>Speech: idle</span></span>
-    <span class="pill" id="pill-tr" data-state="idle"><i></i><span>Translation</span></span>
-    <span class="pill" id="pill-viewers" hidden><i></i><span></span></span>
-  </div>
-  <div class="spacer"></div>
-  <button class="btn" id="open-display">Open big screen ↗</button>
-</header>
-
-<div class="shell">
-  <nav class="nav" id="nav">
-    <button data-tab="live" class="on">● Live</button>
-    <button data-tab="design">Design</button>
-    <button data-tab="languages">Languages</button>
-    <button data-tab="glossary">Glossary</button>
-    <button data-tab="events">Events</button>
-    <button data-tab="transcript">Transcript</button>
-    <button data-tab="settings">Settings</button>
+<div class="app">
+  <!-- ================================ rail ================================ -->
+  <nav class="rail" id="nav">
+    <div class="brand">
+      <span class="mark"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg></span>
+      <div><b>Live Translate</b><small>Event interpreter</small></div>
+    </div>
+    <button data-tab="live" class="on"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg><span>Live</span></button>
+    <button data-tab="design"><svg class="ic"><use href="/assets/icons.svg#i-palette"/></svg><span>Design</span></button>
+    <button data-tab="languages"><svg class="ic"><use href="/assets/icons.svg#i-globe"/></svg><span>Languages</span></button>
+    <button data-tab="glossary"><svg class="ic"><use href="/assets/icons.svg#i-book"/></svg><span>Glossary</span></button>
+    <button data-tab="events"><svg class="ic"><use href="/assets/icons.svg#i-bookmark"/></svg><span>Events</span></button>
+    <button data-tab="transcript"><svg class="ic"><use href="/assets/icons.svg#i-file"/></svg><span>Transcript</span></button>
+    <button data-tab="settings"><svg class="ic"><use href="/assets/icons.svg#i-sliders"/></svg><span>Settings</span></button>
+    <div class="rail-foot">
+      <button class="btn primary wide" id="open-display"><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg>Open big screen</button>
+      <p class="tiny"><kbd>1</kbd>–<kbd>9</kbd> speaker language<br><kbd>B</kbd> standby &nbsp; <kbd>C</kbd> clear screen</p>
+    </div>
   </nav>
 
-  <main class="main">
-    <!-- ============================= LIVE ============================= -->
-    <section class="tab on" id="tab-live">
-      <div class="card mic">
-        <div class="row">
-          <button class="go" id="go"><span class="go-ico">●</span><span id="go-text">Start listening</span></button>
-          <div class="meter" title="Microphone level"><div id="meter-bar"></div></div>
-          <div class="engine">
-            <label>Engine
-              <select id="engine">
-                <option value="deepgram">Deepgram (best quality)</option>
-                <option value="browser">Browser (free, Chrome/Edge)</option>
-                <option value="demo">Demo (no keys needed)</option>
+  <div class="content">
+    <header class="page-h">
+      <div><h1 id="page-title">Live</h1><p id="page-sub"></p></div>
+      <div class="pills">
+        <span class="pill" id="pill-stt" data-state="idle"><i></i><span>Speech: idle</span></span>
+        <span class="pill" id="pill-tr" data-state="idle"><i></i><span>Translation</span></span>
+        <span class="pill" id="pill-viewers" hidden><i></i><span></span></span>
+      </div>
+    </header>
+
+    <div class="cols">
+      <main class="main">
+        <!-- ============================= LIVE ============================= -->
+        <section class="tab on" id="tab-live">
+          <div class="card hero">
+            <div class="hero-top">
+              <button class="go" id="go"><svg class="ic"><use id="go-ico" href="/assets/icons.svg#i-mic"/></svg><span id="go-text">Start listening</span></button>
+              <canvas id="wave" height="64"></canvas>
+            </div>
+            <div class="warn" id="mic-warn" hidden></div>
+            <div class="grid2 tight">
+              <label class="f">Engine
+                <select id="engine">
+                  <option value="deepgram">Deepgram · best quality</option>
+                  <option value="browser">Browser · free (Chrome / Edge)</option>
+                  <option value="demo">Demo · no keys needed</option>
+                </select>
+              </label>
+              <label class="f">Microphone
+                <select id="device"><option value="">Default microphone</option></select>
+              </label>
+            </div>
+
+            <div class="label-row"><span>Speaker's language</span><small>press <kbd>1</kbd>–<kbd>9</kbd></small></div>
+            <div class="chips" id="source"></div>
+            <div class="row gap" style="margin-top:12px">
+              <label class="check"><input type="checkbox" id="multi"><span>Several people talking · label the speakers</span></label>
+            </div>
+            <p class="hint" id="auto-hint" hidden>Auto detects English, Spanish, French, Italian, German and a few more. For Arabic, Chinese or Turkish, pick the language.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-h">
+              <span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg></span>
+              <div><h3>On the screen</h3><p>What the audience is reading right now. Click a sentence to correct it.</p></div>
+              <div class="card-tools">
+                <button class="btn" id="blank"><svg class="ic"><use href="/assets/icons.svg#i-moon"/></svg>Standby</button>
+                <button class="btn" id="clear"><svg class="ic"><use href="/assets/icons.svg#i-x"/></svg>Clear</button>
+                <button class="btn" id="new-session"><svg class="ic"><use href="/assets/icons.svg#i-plus"/></svg>New session</button>
+              </div>
+            </div>
+            <form id="type-form" class="type">
+              <input id="type-input" placeholder="Type a line to send as if it was spoken…" autocomplete="off">
+              <button class="btn primary"><svg class="ic"><use href="/assets/icons.svg#i-send"/></svg>Send</button>
+            </form>
+            <div class="feed" id="feed"></div>
+          </div>
+        </section>
+
+        <!-- ============================ DESIGN ============================ -->
+        <section class="tab" id="tab-design">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>Event</h3><p>The title people see at the top of every screen.</p></div></div>
+            <label class="f">Title <input data-set="title" maxlength="140" placeholder="e.g. Global Summit 2026"></label>
+            <label class="f">Subtitle <input data-set="subtitle" maxlength="200" placeholder="e.g. Live translation"></label>
+            <label class="check"><input type="checkbox" data-set="showHeader"><span>Show title and logo</span></label>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-image"/></svg></span><div><h3>Logo</h3><p>PNG with a transparent background looks best.</p></div></div>
+            <div class="up">
+              <div class="thumb logo-thumb" id="thumb-logo"><span>No logo</span></div>
+              <div class="up-actions">
+                <label class="btn file"><svg class="ic"><use href="/assets/icons.svg#i-upload"/></svg>Upload logo<input type="file" accept="image/*" data-upload="logo" hidden></label>
+                <button class="btn ghost" data-remove="logo"><svg class="ic"><use href="/assets/icons.svg#i-trash"/></svg>Remove</button>
+              </div>
+            </div>
+            <div class="grid2">
+              <label class="f">Position
+                <select data-set="logoPos"><option value="top-left">Top left</option><option value="top-center">Top centre</option><option value="top-right">Top right</option></select>
+              </label>
+              <label class="f">Size <output data-out="logoSize"></output><input type="range" min="30" max="250" data-set="logoSize"></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-image"/></svg></span><div><h3>Backgrounds</h3><p>A wide picture for big screens and laptops, a tall one for phones. Both are resized automatically.</p></div></div>
+            <div class="grid2">
+              <div class="up">
+                <div class="thumb wide" id="thumb-bgLandscape"><span>Wide<br>16:9</span></div>
+                <div class="up-actions">
+                  <label class="btn file"><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg>Big screen<input type="file" accept="image/*" data-upload="bgLandscape" hidden></label>
+                  <button class="btn ghost" data-remove="bgLandscape"><svg class="ic"><use href="/assets/icons.svg#i-trash"/></svg>Remove</button>
+                </div>
+              </div>
+              <div class="up">
+                <div class="thumb tall" id="thumb-bgPortrait"><span>Tall<br>9:16</span></div>
+                <div class="up-actions">
+                  <label class="btn file"><svg class="ic"><use href="/assets/icons.svg#i-phone"/></svg>Phones<input type="file" accept="image/*" data-upload="bgPortrait" hidden></label>
+                  <button class="btn ghost" data-remove="bgPortrait"><svg class="ic"><use href="/assets/icons.svg#i-trash"/></svg>Remove</button>
+                </div>
+              </div>
+            </div>
+            <div class="grid2">
+              <label class="f">Darken picture <output data-out="dim"></output><input type="range" min="0" max="90" data-set="dim"></label>
+              <label class="f">Blur picture <output data-out="blur"></output><input type="range" min="0" max="30" data-set="blur"></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-palette"/></svg></span><div><h3>Look</h3><p>Colours, layout and text on the big screen.</p></div></div>
+            <div class="label-row"><span>Theme</span></div>
+            <div class="swatches" id="themes"></div>
+            <div class="label-row"><span>Layout</span></div>
+            <div class="layouts" id="layouts"></div>
+            <div class="grid2" style="margin-top:18px">
+              <label class="f">Text size <output data-out="fontScale"></output><input type="range" min="50" max="160" data-set="fontScale"></label>
+              <label class="f">Sentences shown <output data-out="maxLines"></output><input type="range" min="1" max="5" data-set="maxLines"></label>
+              <label class="f">Accent colour <input type="color" data-set="accent"></label>
+            </div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" data-set="uniformSize"><span>Same text size in every language</span></label>
+              <label class="check"><input type="checkbox" data-set="showLabels"><span>Language labels</span></label>
+              <label class="check"><input type="checkbox" data-set="showOriginal"><span>Show the original speech when its language isn't on screen</span></label>
+              <label class="check"><input type="checkbox" data-set="showSpeaker"><span>Speaker names (several-speakers mode)</span></label>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========================== LANGUAGES ========================== -->
+        <section class="tab" id="tab-languages">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg></span><div><h3>On the big screen</h3><p>Tick the languages to show at the same time and use the arrows to set the order. The text shrinks to fit, so 2–4 is the most comfortable.</p></div></div>
+            <div id="lang-list" class="lang-list"></div>
+            <p class="hint" id="lang-warn"></p>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-phone"/></svg></span><div><h3>On phones</h3><p>Each person picks up to 4 of these. Translation only runs for languages someone is actually reading.</p></div></div>
+            <div class="chips" id="phone-langs"></div>
+            <p class="hint" id="phone-stats"></p>
+          </div>
+        </section>
+
+        <!-- ============================ GLOSSARY ========================== -->
+        <section class="tab" id="tab-glossary">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>About this event</h3><p>One sentence of context makes every translation better.</p></div></div>
+            <label class="f">Context <input data-set="context" maxlength="1000" placeholder="e.g. Renewable energy conference in Riyadh; speakers are engineers and investors"></label>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-book"/></svg></span><div><h3>Names and special terms</h3><p>One per line. Write only the word to keep it exactly as is, or <b>term = required translation</b>.</p></div></div>
+            <textarea data-set="glossary" rows="12" maxlength="8000" spellcheck="false" placeholder="Seraj Fouzay&#10;Solar Bridge&#10;net zero = صافي الانبعاثات الصفرية&#10;board of directors = مجلس الإدارة"></textarea>
+            <p class="hint">Applied to every translation immediately and saved with the event.</p>
+          </div>
+        </section>
+
+        <!-- ============================= EVENTS =========================== -->
+        <section class="tab" id="tab-events">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-bookmark"/></svg></span><div><h3>Save this setup</h3><p>Title, logo, both backgrounds, look, languages, glossary and context, ready for next time.</p></div></div>
+            <form id="event-form" class="type"><input id="event-name" placeholder="Event name, e.g. Summit 2026 · Day 1" maxlength="80"><button class="btn primary">Save</button></form>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-layout"/></svg></span><div><h3>Saved events</h3><p>Load one to change the whole screen in a click.</p></div></div>
+            <div id="event-list" class="events"></div>
+          </div>
+        </section>
+
+        <!-- =========================== TRANSCRIPT ========================= -->
+        <section class="tab" id="tab-transcript">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-file"/></svg></span><div><h3>Download a transcript</h3><p>Every sentence with its time, in the languages you choose.</p></div></div>
+            <label class="f">Session <select id="tx-session"></select></label>
+            <div class="label-row"><span>Languages to include</span></div>
+            <div class="chips" id="tx-langs"></div>
+            <label class="check" style="margin-top:14px"><input type="checkbox" id="tx-fill"><span>Translate any language nobody was reading live (takes a moment)</span></label>
+            <div class="row gap" style="margin-top:18px">
+              <button class="btn primary" data-export="html"><svg class="ic"><use href="/assets/icons.svg#i-file"/></svg>Printable page (PDF)</button>
+              <button class="btn" data-export="txt">Text</button>
+              <button class="btn" data-export="md">Markdown</button>
+              <button class="btn" data-export="srt">Subtitles .srt</button>
+              <button class="btn" data-export="json">JSON</button>
+            </div>
+            <p class="hint" id="tx-hint"></p>
+          </div>
+        </section>
+
+        <!-- ============================ SETTINGS ========================== -->
+        <section class="tab" id="tab-settings">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg></span><div><h3>Speech recognition · Deepgram</h3><p>Streams your microphone for fast, accurate text. Get a key at deepgram.com.</p></div><span class="badge" id="badge-dg"></span></div>
+            <input id="key-dg" type="password" placeholder="Paste Deepgram API key" autocomplete="off">
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg></span><div><h3>Translation · Claude</h3><p>Translates each sentence with the context of what was said before. Get a key at console.anthropic.com.</p></div><span class="badge" id="badge-an"></span></div>
+            <input id="key-an" type="password" placeholder="Paste Anthropic API key" autocomplete="off">
+            <label class="f" style="margin-top:14px">Model
+              <select id="model">
+                <option value="claude-haiku-4-5">Claude Haiku 4.5 · fastest (recommended for live)</option>
+                <option value="claude-sonnet-5-5">Claude Sonnet 5.5 · more nuance, a little slower</option>
+                <option value="claude-opus-5-5">Claude Opus 5.5 · best quality, slowest</option>
               </select>
             </label>
-            <label>Microphone
-              <select id="device"><option value="">Default microphone</option></select>
-            </label>
+            <div class="row gap"><button class="btn primary" id="save-keys">Save</button><button class="btn" id="test-an">Test translation</button><span class="hint" id="test-result"></span></div>
           </div>
-        </div>
-        <div class="warn" id="mic-warn" hidden></div>
-
-        <h3>Speaker's language <small>keys 1–8</small></h3>
-        <div class="seg-buttons" id="source"></div>
-        <div class="row gap">
-          <label class="check"><input type="checkbox" id="multi"> Several people talking (label speakers)</label>
-          <span class="hint" id="auto-hint" hidden>Auto detects English, Spanish, French, Italian and a few more. For Arabic, Chinese or Turkish, pick the language.</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row between">
-          <h3 style="margin:0">On the screen</h3>
-          <div class="row gap">
-            <button class="btn" id="blank">Standby screen <kbd>B</kbd></button>
-            <button class="btn" id="clear">Clear screen <kbd>C</kbd></button>
-            <button class="btn" id="new-session">New session</button>
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-wifi"/></svg></span><div><h3>Network</h3><p>Phones must be on the same Wi-Fi as this computer, or on its hotspot. If Windows asks about access, choose <b>Private networks</b>.</p></div></div>
+            <label class="f">Address shown to phones <select id="host"></select></label>
+            <p class="hint mono" id="join-url"></p>
           </div>
-        </div>
-        <form id="type-form" class="type">
-          <input id="type-input" placeholder="Type a line to send as if it was spoken…" autocomplete="off">
-          <button class="btn">Send</button>
-        </form>
-        <div class="feed" id="feed"></div>
-      </div>
-    </section>
+        </section>
+      </main>
 
-    <!-- ============================ DESIGN ============================ -->
-    <section class="tab" id="tab-design">
-      <div class="card">
-        <h3>Event</h3>
-        <label class="f">Title <input data-set="title" maxlength="140" placeholder="e.g. Global Summit 2026"></label>
-        <label class="f">Subtitle <input data-set="subtitle" maxlength="200" placeholder="e.g. Live translation"></label>
-        <label class="check"><input type="checkbox" data-set="showHeader"> Show title and logo</label>
-      </div>
-
-      <div class="card">
-        <h3>Logo</h3>
-        <div class="up">
-          <div class="thumb logo-thumb" id="thumb-logo"><span>No logo</span></div>
-          <div class="up-actions">
-            <label class="btn file">Upload logo<input type="file" accept="image/*" data-upload="logo" hidden></label>
-            <button class="btn ghost" data-remove="logo">Remove</button>
-            <p class="hint">PNG with a transparent background looks best.</p>
+      <!-- ============================== side ============================== -->
+      <aside class="side">
+        <div class="card join">
+          <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-qr"/></svg></span><div><h3>Invite the audience</h3><p>Scan, pick languages, read along.</p></div></div>
+          <div class="join-body">
+            <img id="qr" alt="QR code" width="128" height="128">
+            <div class="join-info">
+              <div class="mono link" id="join-link"></div>
+              <button class="btn" id="copy-link"><svg class="ic"><use href="/assets/icons.svg#i-copy"/></svg>Copy link</button>
+            </div>
           </div>
-        </div>
-        <div class="grid2">
-          <label class="f">Position
-            <select data-set="logoPos"><option value="top-left">Top left</option><option value="top-center">Top centre</option><option value="top-right">Top right</option></select>
+          <label class="check" style="margin-top:14px"><input type="checkbox" data-set="showQR"><span>Show the QR code on the big screen</span></label>
+          <label class="f" style="margin-top:10px">QR position
+            <select data-set="qrPos"><option value="top-right">Top right</option><option value="top-left">Top left</option><option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option><option value="center">Centre, large</option></select>
           </label>
-          <label class="f">Size <input type="range" min="30" max="250" data-set="logoSize"></label>
         </div>
-      </div>
-
-      <div class="card">
-        <h3>Backgrounds</h3>
-        <p class="hint">Use two pictures: a wide one for laptops, projectors and big screens, and a tall one for phones (also used on vertical screens). Pictures are resized automatically.</p>
-        <div class="grid2">
-          <div class="up">
-            <div class="thumb wide" id="thumb-bgLandscape"><span>Wide · 16:9</span></div>
-            <div class="up-actions">
-              <label class="btn file">Big-screen picture<input type="file" accept="image/*" data-upload="bgLandscape" hidden></label>
-              <button class="btn ghost" data-remove="bgLandscape">Remove</button>
-            </div>
-          </div>
-          <div class="up">
-            <div class="thumb tall" id="thumb-bgPortrait"><span>Tall · 9:16</span></div>
-            <div class="up-actions">
-              <label class="btn file">Phone picture<input type="file" accept="image/*" data-upload="bgPortrait" hidden></label>
-              <button class="btn ghost" data-remove="bgPortrait">Remove</button>
-            </div>
-          </div>
+        <div class="preview">
+          <div class="pv-head"><b><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg>Big screen</b><a href="/display" target="_blank">Open <svg class="ic"><use href="/assets/icons.svg#i-external"/></svg></a></div>
+          <div class="pv-screen" id="pv-screen"><iframe src="/display?preview=1" title="Screen preview" tabindex="-1"></iframe></div>
         </div>
-        <div class="grid2">
-          <label class="f">Darken picture <output data-out="dim"></output><input type="range" min="0" max="90" data-set="dim"></label>
-          <label class="f">Blur picture <output data-out="blur"></output><input type="range" min="0" max="30" data-set="blur"></label>
+        <div class="preview">
+          <div class="pv-head"><b><svg class="ic"><use href="/assets/icons.svg#i-phone"/></svg>Phone</b><select id="pv-lang" class="mini"></select></div>
+          <div class="pv-phone" id="pv-phone"><iframe title="Phone preview" tabindex="-1"></iframe></div>
         </div>
-      </div>
-
-      <div class="card">
-        <h3>Look</h3>
-        <div class="f">Theme</div>
-        <div class="seg-buttons" id="themes"></div>
-        <div class="f" style="margin-top:14px">Layout on the big screen</div>
-        <div class="layouts" id="layouts"></div>
-        <div class="grid2" style="margin-top:14px">
-          <label class="f">Text size <output data-out="fontScale"></output><input type="range" min="50" max="160" data-set="fontScale"></label>
-          <label class="f">Sentences shown <output data-out="maxLines"></output><input type="range" min="1" max="5" data-set="maxLines"></label>
-          <label class="f">Accent colour <input type="color" data-set="accent"></label>
-        </div>
-        <div class="checks">
-          <label class="check"><input type="checkbox" data-set="uniformSize"> Same text size in every language (calmer to read)</label>
-          <label class="check"><input type="checkbox" data-set="showLabels"> Language labels</label>
-          <label class="check"><input type="checkbox" data-set="showOriginal"> Show original speech when its language isn't on screen</label>
-          <label class="check"><input type="checkbox" data-set="showSpeaker"> Speaker names (several-speakers mode)</label>
-        </div>
-      </div>
-    </section>
-
-    <!-- =========================== LANGUAGES ========================== -->
-    <section class="tab" id="tab-languages">
-      <div class="card">
-        <h3>Languages on the big screen</h3>
-        <p class="hint">Tick the languages to show at the same time, and drag the order with the arrows. Up to 7 at once; the text shrinks automatically to fit, so 2–4 is the most comfortable.</p>
-        <div id="lang-list" class="lang-list"></div>
-        <p class="hint" id="lang-warn"></p>
-      </div>
-      <div class="card">
-        <h3>Languages phones can choose</h3>
-        <p class="hint">Each phone reads in one language of its own choice. Translation only runs for languages someone is actually using, which keeps it fast and cheap.</p>
-        <div class="checks" id="phone-langs"></div>
-        <p class="hint" id="phone-stats"></p>
-      </div>
-    </section>
-
-    <!-- ============================ GLOSSARY ========================== -->
-    <section class="tab" id="tab-glossary">
-      <div class="card">
-        <h3>About this event</h3>
-        <p class="hint">A sentence of context makes every translation better (topic, place, audience).</p>
-        <label class="f">Context <input data-set="context" maxlength="1000" placeholder="e.g. Renewable energy conference in Riyadh; speakers are engineers and investors"></label>
-      </div>
-      <div class="card">
-        <h3>Names and special terms</h3>
-        <p class="hint">One per line. Write just the word to keep it exactly as is (names, brands), or <b>term = required translation</b>.</p>
-        <textarea data-set="glossary" rows="12" maxlength="8000" spellcheck="false" placeholder="Seraj Fouzay&#10;Solar Bridge&#10;net zero = صافي الانبعاثات الصفرية&#10;board of directors = مجلس الإدارة"></textarea>
-        <p class="hint">Applied to every translation immediately. It is saved with the event.</p>
-      </div>
-    </section>
-
-    <!-- ============================= EVENTS =========================== -->
-    <section class="tab" id="tab-events">
-      <div class="card">
-        <h3>Save this setup as an event</h3>
-        <p class="hint">Saves the title, logo, both backgrounds, look, languages, glossary and context, so next time it is one click.</p>
-        <form id="event-form" class="type"><input id="event-name" placeholder="Event name, e.g. Summit 2026 · Day 1" maxlength="80"><button class="btn on">Save</button></form>
-      </div>
-      <div class="card">
-        <h3>Saved events</h3>
-        <div id="event-list" class="events"></div>
-      </div>
-    </section>
-
-    <!-- =========================== TRANSCRIPT ========================= -->
-    <section class="tab" id="tab-transcript">
-      <div class="card">
-        <h3>Download a transcript</h3>
-        <label class="f">Session <select id="tx-session"></select></label>
-        <div class="f">Languages to include</div>
-        <div class="checks row" id="tx-langs" style="flex-direction:row;flex-wrap:wrap;gap:14px"></div>
-        <label class="check" style="margin-top:12px"><input type="checkbox" id="tx-fill"> Translate any language nobody was reading live (takes a moment)</label>
-        <div class="row gap" style="margin-top:16px">
-          <button class="btn on" data-export="html">Open printable page (PDF)</button>
-          <button class="btn" data-export="txt">Text</button>
-          <button class="btn" data-export="md">Markdown</button>
-          <button class="btn" data-export="srt">Subtitles (.srt)</button>
-          <button class="btn" data-export="json">JSON</button>
-        </div>
-        <p class="hint" id="tx-hint"></p>
-      </div>
-    </section>
-
-    <!-- ============================ SETTINGS ========================== -->
-    <section class="tab" id="tab-settings">
-      <div class="card">
-        <h3>Speech recognition · Deepgram</h3>
-        <p class="hint">Streams your microphone to Deepgram for fast, accurate text. Get a key at deepgram.com.</p>
-        <div class="row gap"><input id="key-dg" type="password" placeholder="Paste Deepgram API key" autocomplete="off"><span class="badge" id="badge-dg"></span></div>
-      </div>
-      <div class="card">
-        <h3>Translation · Claude</h3>
-        <p class="hint">Translates each sentence with the context of what was said before. Get a key at console.anthropic.com.</p>
-        <div class="row gap"><input id="key-an" type="password" placeholder="Paste Anthropic API key" autocomplete="off"><span class="badge" id="badge-an"></span></div>
-        <label class="f" style="margin-top:12px">Model
-          <select id="model">
-            <option value="claude-haiku-4-5">Claude Haiku 4.5 — fastest (recommended for live)</option>
-            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — more nuance, slightly slower</option>
-            <option value="claude-opus-5-5">Claude Opus 5.5 — best quality, slowest</option>
-          </select>
-        </label>
-        <div class="row gap" style="margin-top:12px"><button class="btn" id="save-keys">Save</button><button class="btn ghost" id="test-an">Test translation</button><span class="hint" id="test-result"></span></div>
-      </div>
-      <div class="card">
-        <h3>Network</h3>
-        <p class="hint">Phones must be on the same Wi-Fi as this computer (or on this computer's hotspot). Windows may ask to allow access the first time: choose <b>Private networks</b>.</p>
-        <label class="f">Address shown to phones
-          <select id="host"></select>
-        </label>
-        <p class="hint mono" id="join-url"></p>
-      </div>
-    </section>
-  </main>
-
-  <aside class="side">
-    <div class="card join">
-      <h3>Invite the audience</h3>
-      <div class="join-body">
-        <img id="qr" alt="QR code" width="132" height="132">
-        <div class="join-info">
-          <p class="hint" style="margin-top:0">Phones scan this, pick their language, and read along. Same Wi-Fi as this computer.</p>
-          <div class="mono" id="join-link"></div>
-          <div class="row gap" style="margin-top:8px"><button class="btn" id="copy-link">Copy link</button></div>
-        </div>
-      </div>
-      <label class="check" style="margin-top:12px"><input type="checkbox" data-set="showQR"> Show the QR code on the big screen</label>
-      <label class="f" style="margin-top:8px">QR position on the big screen
-        <select data-set="qrPos"><option value="top-right">Top right</option><option value="top-left">Top left</option><option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option><option value="center">Centre, large</option></select>
-      </label>
+      </aside>
     </div>
-    <div class="preview">
-      <div class="pv-head"><b>Big screen</b><a href="/display" target="_blank">open ↗</a></div>
-      <div class="pv-screen" id="pv-screen"><iframe src="/display?preview=1" title="Screen preview" tabindex="-1"></iframe></div>
-    </div>
-    <div class="preview">
-      <div class="pv-head"><b>Phone</b>
-        <select id="pv-lang" class="mini"></select>
-      </div>
-      <div class="pv-phone" id="pv-phone"><iframe title="Phone preview" tabindex="-1"></iframe></div>
-    </div>
-  </aside>
+  </div>
 </div>
 
 <div class="toasts" id="toasts"></div>
