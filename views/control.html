@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Translate · Control</title>
+  <link rel="stylesheet" href="/assets/css/control.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark">◐</span><b>Live Translate</b></div>
+  <div class="pills">
+    <span class="pill" id="pill-stt" data-state="idle"><i></i><span>Speech: idle</span></span>
+    <span class="pill" id="pill-tr" data-state="idle"><i></i><span>Translation</span></span>
+    <span class="pill" id="pill-viewers" hidden><i></i><span></span></span>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="open-display">Open big screen ↗</button>
+</header>
+
+<div class="shell">
+  <nav class="nav" id="nav">
+    <button data-tab="live" class="on">● Live</button>
+    <button data-tab="design">Design</button>
+    <button data-tab="languages">Languages</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+
+  <main class="main">
+    <!-- ============================= LIVE ============================= -->
+    <section class="tab on" id="tab-live">
+      <div class="card mic">
+        <div class="row">
+          <button class="go" id="go"><span class="go-ico">●</span><span id="go-text">Start listening</span></button>
+          <div class="meter" title="Microphone level"><div id="meter-bar"></div></div>
+          <div class="engine">
+            <label>Engine
+              <select id="engine">
+                <option value="deepgram">Deepgram (best quality)</option>
+                <option value="browser">Browser (free, Chrome/Edge)</option>
+                <option value="demo">Demo (no keys needed)</option>
+              </select>
+            </label>
+            <label>Microphone
+              <select id="device"><option value="">Default microphone</option></select>
+            </label>
+          </div>
+        </div>
+        <div class="warn" id="mic-warn" hidden></div>
+
+        <h3>Speaker's language <small>keys 1–8</small></h3>
+        <div class="seg-buttons" id="source"></div>
+        <div class="row gap">
+          <label class="check"><input type="checkbox" id="multi"> Several people talking (label speakers)</label>
+          <span class="hint" id="auto-hint" hidden>Auto detects English, Spanish, French, Italian and a few more. For Arabic, Chinese or Turkish, pick the language.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <h3 style="margin:0">On the screen</h3>
+          <div class="row gap">
+            <button class="btn" id="blank">Standby screen <kbd>B</kbd></button>
+            <button class="btn" id="clear">Clear screen <kbd>C</kbd></button>
+            <button class="btn" id="new-session">New session</button>
+          </div>
+        </div>
+        <form id="type-form" class="type">
+          <input id="type-input" placeholder="Type a line to send as if it was spoken…" autocomplete="off">
+          <button class="btn">Send</button>
+        </form>
+        <div class="feed" id="feed"></div>
+      </div>
+    </section>
+
+    <!-- ============================ DESIGN ============================ -->
+    <section class="tab" id="tab-design">
+      <div class="card">
+        <h3>Event</h3>
+        <label class="f">Title <input data-set="title" maxlength="140" placeholder="e.g. Global Summit 2026"></label>
+        <label class="f">Subtitle <input data-set="subtitle" maxlength="200" placeholder="e.g. Live translation"></label>
+        <label class="check"><input type="checkbox" data-set="showHeader"> Show title and logo</label>
+      </div>
+
+      <div class="card">
+        <h3>Logo</h3>
+        <div class="up">
+          <div class="thumb logo-thumb" id="thumb-logo"><span>No logo</span></div>
+          <div class="up-actions">
+            <label class="btn file">Upload logo<input type="file" accept="image/*" data-upload="logo" hidden></label>
+            <button class="btn ghost" data-remove="logo">Remove</button>
+            <p class="hint">PNG with a transparent background looks best.</p>
+          </div>
+        </div>
+        <div class="grid2">
+          <label class="f">Position
+            <select data-set="logoPos"><option value="top-left">Top left</option><option value="top-center">Top centre</option><option value="top-right">Top right</option></select>
+          </label>
+          <label class="f">Size <input type="range" min="30" max="250" data-set="logoSize"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Backgrounds</h3>
+        <p class="hint">Use two pictures: a wide one for laptops, projectors and big screens, and a tall one for phones (also used on vertical screens). Pictures are resized automatically.</p>
+        <div class="grid2">
+          <div class="up">
+            <div class="thumb wide" id="thumb-bgLandscape"><span>Wide · 16:9</span></div>
+            <div class="up-actions">
+              <label class="btn file">Big-screen picture<input type="file" accept="image/*" data-upload="bgLandscape" hidden></label>
+              <button class="btn ghost" data-remove="bgLandscape">Remove</button>
+            </div>
+          </div>
+          <div class="up">
+            <div class="thumb tall" id="thumb-bgPortrait"><span>Tall · 9:16</span></div>
+            <div class="up-actions">
+              <label class="btn file">Phone picture<input type="file" accept="image/*" data-upload="bgPortrait" hidden></label>
+              <button class="btn ghost" data-remove="bgPortrait">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="grid2">
+          <label class="f">Darken picture <output data-out="dim"></output><input type="range" min="0" max="90" data-set="dim"></label>
+          <label class="f">Blur picture <output data-out="blur"></output><input type="range" min="0" max="30" data-set="blur"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Look</h3>
+        <div class="f">Theme</div>
+        <div class="seg-buttons" id="themes"></div>
+        <div class="f" style="margin-top:14px">Layout on the big screen</div>
+        <div class="layouts" id="layouts"></div>
+        <div class="grid2" style="margin-top:14px">
+          <label class="f">Text size <output data-out="fontScale"></output><input type="range" min="50" max="160" data-set="fontScale"></label>
+          <label class="f">Sentences shown <output data-out="maxLines"></output><input type="range" min="1" max="5" data-set="maxLines"></label>
+          <label class="f">Accent colour <input type="color" data-set="accent"></label>
+        </div>
+        <div class="checks">
+          <label class="check"><input type="checkbox" data-set="uniformSize"> Same text size in every language (calmer to read)</label>
+          <label class="check"><input type="checkbox" data-set="showLabels"> Language labels</label>
+          <label class="check"><input type="checkbox" data-set="showOriginal"> Show original speech when its language isn't on screen</label>
+          <label class="check"><input type="checkbox" data-set="showSpeaker"> Speaker names (several-speakers mode)</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================== LANGUAGES ========================== -->
+    <section class="tab" id="tab-languages">
+      <div class="card">
+        <h3>Languages on the big screen</h3>
+        <p class="hint">Tick the languages to show at the same time, and drag the order with the arrows. Up to 7 at once; the text shrinks automatically to fit, so 2–4 is the most comfortable.</p>
+        <div id="lang-list" class="lang-list"></div>
+        <p class="hint" id="lang-warn"></p>
+      </div>
+    </section>
+
+    <!-- ============================ SETTINGS ========================== -->
+    <section class="tab" id="tab-settings">
+      <div class="card">
+        <h3>Speech recognition · Deepgram</h3>
+        <p class="hint">Streams your microphone to Deepgram for fast, accurate text. Get a key at deepgram.com.</p>
+        <div class="row gap"><input id="key-dg" type="password" placeholder="Paste Deepgram API key" autocomplete="off"><span class="badge" id="badge-dg"></span></div>
+      </div>
+      <div class="card">
+        <h3>Translation · Claude</h3>
+        <p class="hint">Translates each sentence with the context of what was said before. Get a key at console.anthropic.com.</p>
+        <div class="row gap"><input id="key-an" type="password" placeholder="Paste Anthropic API key" autocomplete="off"><span class="badge" id="badge-an"></span></div>
+        <label class="f" style="margin-top:12px">Model
+          <select id="model">
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 — fastest (recommended for live)</option>
+            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — more nuance, slightly slower</option>
+            <option value="claude-opus-5-5">Claude Opus 5.5 — best quality, slowest</option>
+          </select>
+        </label>
+        <div class="row gap" style="margin-top:12px"><button class="btn" id="save-keys">Save</button><button class="btn ghost" id="test-an">Test translation</button><span class="hint" id="test-result"></span></div>
+      </div>
+      <div class="card">
+        <h3>Network</h3>
+        <p class="hint">Phones must be on the same Wi-Fi as this computer (or on this computer's hotspot). Windows may ask to allow access the first time: choose <b>Private networks</b>.</p>
+        <label class="f">Address shown to phones
+          <select id="host"></select>
+        </label>
+        <p class="hint mono" id="join-url"></p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="side">
+    <div class="preview">
+      <div class="pv-head"><b>Big screen</b><a href="/display" target="_blank">open ↗</a></div>
+      <div class="pv-screen" id="pv-screen"><iframe src="/display?preview=1" title="Screen preview" tabindex="-1"></iframe></div>
+    </div>
+  </aside>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script type="module" src="/assets/js/control.js"></script>
+</body>
+</html>
