@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "demo": "node server/index.js --open"
+    "demo": "node server/index.js --open",
+    "test": "node --test"
   },
   "engines": { "node": ">=20.12" },
   "dependencies": {

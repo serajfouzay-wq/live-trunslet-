@@ -103,7 +103,11 @@ wss.on('connection', (ws, role, lang, preview) => {
     if (role === 'control') return controlMessage(client, data, isBinary);
     if (role === 'phone') return phoneMessage(client, data);
   });
-  ws.on('close', () => hub.removeClient(client));
+  ws.on('close', () => {
+    hub.removeClient(client);
+    // The microphone lives in the control page that pressed Start: if that page goes away, stop listening.
+    if (hub.owner === client) hub.stop();
+  });
   ws.on('error', () => {});
 });
 
@@ -123,7 +127,7 @@ function controlMessage(client, data, isBinary) {
   let m;
   try { m = JSON.parse(data.toString()); } catch { return; }
   switch (m.type) {
-    case 'start': hub.start({ engine: m.engine }); break;
+    case 'start': hub.start({ engine: m.engine, owner: client }); break;
     case 'stop': hub.stop(); break;
     case 'stt': hub.ingestStt({ text: String(m.text || ''), final: !!m.final, speechFinal: !!m.speechFinal, lang: m.lang }); break;
     case 'source': {

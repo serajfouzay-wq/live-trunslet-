@@ -26,15 +26,13 @@ const conn = connect('phone', {
     if (t === 'hello') {
       if (lang && !store.settings.phoneLangs.includes(lang)) lang = null;
       if (!lang) openPicker(true);
-      $('#speak-toggle').hidden = !('speechSynthesis' in window);
       rebuild();
     } else if (t === 'clear') { cards.clear(); $('#feed').replaceChildren(); render(); } else render();
-    onEvent?.(t, m);
+    onEvent(t, m);
   },
   onOpen: () => $('#conn').classList.remove('off'),
   onClose: () => $('#conn').classList.add('off'),
 });
-let onEvent = null;
 
 let raf = 0;
 function render() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
@@ -147,7 +145,7 @@ function choose(code) {
   conn.send({ type: 'lang', lang: code });
   stick = true;
   rebuild();
-  onEvent?.('lang', { lang: code });
+  onEvent('lang', { lang: code });
 }
 $('#lang-btn').onclick = () => openPicker(false);
 $('#picker').addEventListener('click', (e) => { if (e.target.id === 'picker' && lang) $('#picker').hidden = true; });
@@ -178,7 +176,56 @@ if (!preview) {
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && keepAwake());
 }
 
-/* Hook for optional features (read aloud etc.) */
-export function onPhoneEvent(fn) { onEvent = fn; }
+/* Read aloud: speaks each finished sentence in the reader's language (uses the phone's own voices). */
+const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
+let speaking = false;
+let queued = 0;
+const spoken = new Set();
+
+function voiceFor(code) {
+  const web = store.langs[code]?.web || code;
+  const voices = synth.getVoices();
+  return voices.find((v) => v.lang.replace('_', '-') === web) || voices.find((v) => v.lang.toLowerCase().startsWith(code));
+}
+
+function say(id) {
+  const seg = store.byId.get(id);
+  const text = seg && (seg.tr[lang] || (seg.src === lang ? seg.text : ''));
+  if (!text || spoken.has(id)) return;
+  spoken.add(id);
+  if (queued >= 3) { synth.cancel(); queued = 0; } // fell behind: skip ahead to the newest sentence
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = store.langs[lang].web;
+  const v = voiceFor(lang);
+  if (v) u.voice = v;
+  u.rate = 1.05;
+  u.onend = u.onerror = () => { queued = Math.max(0, queued - 1); };
+  queued += 1;
+  synth.speak(u);
+}
+
+function onEvent(type, m) {
+  if (!speaking || !synth) return;
+  if (type === 'tr' && m.done && m.lang === lang) say(m.id);
+  if (type === 'lang') { synth.cancel(); queued = 0; }
+}
+
+const speakBtn = $('#speak-toggle');
+if (synth) {
+  speakBtn.hidden = false;
+  speakBtn.onclick = () => {
+    speaking = !speaking;
+    speakBtn.setAttribute('aria-pressed', speaking);
+    synth.cancel();
+    queued = 0;
+    if (speaking) {
+      synth.speak(new SpeechSynthesisUtterance(' ')); // unlocks audio on iPhones (needs a tap)
+      store.segments.forEach((s) => spoken.add(s.id)); // only read what comes next
+      if (lang && !voiceFor(lang)) speakBtn.title = 'This phone has no voice for this language';
+    }
+  };
+  synth.onvoiceschanged = () => {};
+}
+
 export const getLang = () => lang;
 export { store, conn };

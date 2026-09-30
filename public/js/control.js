@@ -25,7 +25,11 @@ const conn = connect('control', {
       case 'hello': if (m.status) status = m.status; renderAllWithPhone(); break;
       case 'settings': renderSettings(); break;
       case 'segment': case 'tr': case 'segupdate': case 'partial': case 'clear': scheduleFeed(); break;
-      case 'status': status = m; renderStatus(); break;
+      case 'status':
+        status = m;
+        if (!m.running && (mic || recognition)) { recognition?.abort(); recognition = null; stopMic(); $('#mic-warn').hidden = true; }
+        renderStatus();
+        break;
       case 'viewers': viewers = m; renderStatus(); renderPhoneLangs(); break;
       case 'notice': toast(m.message, m.level); break;
       case 'info': net.joinUrl = m.joinUrl; renderNet(); renderJoin(); break;
@@ -572,3 +576,71 @@ function renderAllWithPhone() {
   baseRenderAll();
   if (!phonePreviewReady && Object.keys(store.langs).length) { phonePreviewReady = true; setupPhonePreview(); }
 }
+
+/* ------------------------------------------------------- glossary tab */
+// (textarea/input use the generic data-set bindings; nothing else to do)
+
+/* ---------------------------------------------------------- events tab */
+async function loadEvents() {
+  const list = await api('GET', '/events');
+  const box = $('#event-list');
+  box.replaceChildren();
+  if (!list.length) { const p = document.createElement('p'); p.className = 'empty-note'; p.textContent = 'No saved events yet.'; box.append(p); return; }
+  for (const e of list) {
+    const d = document.createElement('div');
+    d.className = 'ev';
+    d.innerHTML = '<div class="pic"></div><div class="info"><b></b><small></small></div><div class="acts"><button class="btn on">Use</button><button class="btn ghost">Delete</button></div>';
+    const pic = d.querySelector('.pic');
+    if (e.bg) pic.style.backgroundImage = `url("${e.bg}")`;
+    if (e.logo) { const img = document.createElement('img'); img.src = e.logo; img.alt = ''; pic.append(img); }
+    d.querySelector('b').textContent = e.name;
+    d.querySelector('small').textContent = `${e.title || ''} · ${(e.langs || []).join(' ')} · ${new Date(e.savedAt).toLocaleDateString()}`;
+    const [use, del] = d.querySelectorAll('button');
+    use.onclick = async () => { await api('POST', `/events/${e.id}/load`); toast(`Loaded “${e.name}”.`); };
+    del.onclick = async () => { if (confirm(`Delete “${e.name}”?`)) { await api('DELETE', `/events/${e.id}`); loadEvents(); } };
+    box.append(d);
+  }
+}
+$('#event-form').onsubmit = async (ev) => {
+  ev.preventDefault();
+  const name = $('#event-name').value.trim();
+  if (!name) return;
+  try { await api('POST', '/events', { name }); $('#event-name').value = ''; toast('Event saved.'); loadEvents(); } catch (e) { toast(e.message, 'error'); }
+};
+
+/* ------------------------------------------------------ transcript tab */
+async function loadSessions() {
+  const { current, sessions } = await api('GET', '/sessions');
+  const sel = $('#tx-session');
+  const keep = sel.value;
+  sel.replaceChildren();
+  for (const s of sessions) sel.append(new Option(`${new Date(s.startedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · ${s.name} · ${s.count} sentences${s.id === current ? ' (current)' : ''}`, s.id));
+  sel.value = sessions.some((s) => s.id === keep) ? keep : current;
+  const box = $('#tx-langs');
+  if (!box.children.length) {
+    for (const L of Object.values(store.langs)) {
+      const label = document.createElement('label'); label.className = 'check';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = L.code;
+      label.append(cb, ` ${L.native}`);
+      box.append(label);
+    }
+  }
+  const want = new Set(store.settings.screenLangs);
+  if (!box.dataset.init) { box.dataset.init = '1'; box.querySelectorAll('input').forEach((c) => { c.checked = want.has(c.value); }); }
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-export]');
+  if (!b) return;
+  const langs = [...$$('#tx-langs input:checked')].map((c) => c.value);
+  if (!langs.length) return toast('Tick at least one language.');
+  const url = `/api/sessions/${encodeURIComponent($('#tx-session').value)}/export?format=${b.dataset.export}&langs=${langs.join(',')}&fill=${$('#tx-fill').checked ? 1 : 0}`;
+  if (b.dataset.export === 'html') window.open(url, '_blank'); else location.href = url;
+  $('#tx-hint').textContent = $('#tx-fill').checked ? 'Preparing… translating missing languages can take up to a minute for long sessions.' : '';
+});
+$('#nav').addEventListener('click', (e) => {
+  const t = e.target.closest('button[data-tab]')?.dataset.tab;
+  if (t === 'events') loadEvents().catch((x) => toast(x.message, 'error'));
+  if (t === 'transcript' && store.settings) loadSessions().catch((x) => toast(x.message, 'error'));
+});
+
+try { const t = localStorage.getItem('tab'); if (t === 'events' || t === 'transcript') setTimeout(() => $(`#nav button[data-tab="${t}"]`)?.click(), 400); } catch { /* ignore */ }

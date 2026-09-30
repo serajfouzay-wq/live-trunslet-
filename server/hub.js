@@ -164,6 +164,9 @@ export class Hub {
   }
 
   notify(level, message) {
+    const now = Date.now();
+    if (this.lastNotice?.message === message && now - this.lastNotice.at < 10000) return; // don't repeat the same error
+    this.lastNotice = { message, at: now };
     this.broadcast({ type: 'notice', level, message }, ['control']);
   }
 
@@ -370,8 +373,9 @@ export class Hub {
 
   /* --------------------------------------------------------------- engines */
 
-  async start({ engine }) {
+  async start({ engine, owner }) {
     if (this.running) this.stop();
+    this.owner = owner || null;
     engine = ['deepgram', 'browser', 'demo'].includes(engine) ? engine : config.sttEngine;
     this.engine = engine;
     if (engine === 'deepgram') {
@@ -429,6 +433,7 @@ export class Hub {
     this.demoAbort = null;
     this.running = false;
     this.engine = null;
+    this.owner = null;
     this.setStt('idle', '');
     this.broadcast(this.statusMsg(), ['control']);
   }

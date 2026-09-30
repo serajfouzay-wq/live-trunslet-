@@ -23,6 +23,9 @@
     <button data-tab="live" class="on">● Live</button>
     <button data-tab="design">Design</button>
     <button data-tab="languages">Languages</button>
+    <button data-tab="glossary">Glossary</button>
+    <button data-tab="events">Events</button>
+    <button data-tab="transcript">Transcript</button>
     <button data-tab="settings">Settings</button>
   </nav>
 
@@ -158,6 +161,53 @@
         <p class="hint">Each phone reads in one language of its own choice. Translation only runs for languages someone is actually using, which keeps it fast and cheap.</p>
         <div class="checks" id="phone-langs"></div>
         <p class="hint" id="phone-stats"></p>
+      </div>
+    </section>
+
+    <!-- ============================ GLOSSARY ========================== -->
+    <section class="tab" id="tab-glossary">
+      <div class="card">
+        <h3>About this event</h3>
+        <p class="hint">A sentence of context makes every translation better (topic, place, audience).</p>
+        <label class="f">Context <input data-set="context" maxlength="1000" placeholder="e.g. Renewable energy conference in Riyadh; speakers are engineers and investors"></label>
+      </div>
+      <div class="card">
+        <h3>Names and special terms</h3>
+        <p class="hint">One per line. Write just the word to keep it exactly as is (names, brands), or <b>term = required translation</b>.</p>
+        <textarea data-set="glossary" rows="12" maxlength="8000" spellcheck="false" placeholder="Seraj Fouzay&#10;Solar Bridge&#10;net zero = صافي الانبعاثات الصفرية&#10;board of directors = مجلس الإدارة"></textarea>
+        <p class="hint">Applied to every translation immediately. It is saved with the event.</p>
+      </div>
+    </section>
+
+    <!-- ============================= EVENTS =========================== -->
+    <section class="tab" id="tab-events">
+      <div class="card">
+        <h3>Save this setup as an event</h3>
+        <p class="hint">Saves the title, logo, both backgrounds, look, languages, glossary and context, so next time it is one click.</p>
+        <form id="event-form" class="type"><input id="event-name" placeholder="Event name, e.g. Summit 2026 · Day 1" maxlength="80"><button class="btn on">Save</button></form>
+      </div>
+      <div class="card">
+        <h3>Saved events</h3>
+        <div id="event-list" class="events"></div>
+      </div>
+    </section>
+
+    <!-- =========================== TRANSCRIPT ========================= -->
+    <section class="tab" id="tab-transcript">
+      <div class="card">
+        <h3>Download a transcript</h3>
+        <label class="f">Session <select id="tx-session"></select></label>
+        <div class="f">Languages to include</div>
+        <div class="checks row" id="tx-langs" style="flex-direction:row;flex-wrap:wrap;gap:14px"></div>
+        <label class="check" style="margin-top:12px"><input type="checkbox" id="tx-fill"> Translate any language nobody was reading live (takes a moment)</label>
+        <div class="row gap" style="margin-top:16px">
+          <button class="btn on" data-export="html">Open printable page (PDF)</button>
+          <button class="btn" data-export="txt">Text</button>
+          <button class="btn" data-export="md">Markdown</button>
+          <button class="btn" data-export="srt">Subtitles (.srt)</button>
+          <button class="btn" data-export="json">JSON</button>
+        </div>
+        <p class="hint" id="tx-hint"></p>
       </div>
     </section>
 

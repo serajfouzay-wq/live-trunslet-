@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 // Streaming speech-to-text through Deepgram. The browser captures the mic and
 // sends 16 kHz mono PCM to us; we relay it and turn results into hub events.
 const MODELS = ['nova-3', 'nova-2'];
+const BASE_URL = process.env.DEEPGRAM_URL || 'wss://api.deepgram.com/v1/listen'; // overridable for tests
 
 export function createDeepgram({ key, lang, multi, diarize, onResult, onStatus }) {
   let ws = null;
@@ -29,7 +30,7 @@ export function createDeepgram({ key, lang, multi, diarize, onResult, onStatus }
       vad_events: 'true',
     });
     if (diarize) q.set('diarize', 'true');
-    return `wss://api.deepgram.com/v1/listen?${q}`;
+    return `${BASE_URL}?${q}`;
   }
 
   function connect() {
