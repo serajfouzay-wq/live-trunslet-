@@ -29,6 +29,7 @@ export class Store {
     this.partial = null;
     this.langs = {};
     this.joinUrl = '';
+    this.draft = {};
   }
   #add(seg) {
     const old = this.byId.get(seg.id);
@@ -43,15 +44,17 @@ export class Store {
         this.segments = []; this.byId.clear();
         m.segments.forEach((s) => this.#add(s));
         break;
-      case 'segment': case 'segupdate': this.#add(m.seg); break;
+      case 'segment': this.draft = {}; this.#add(m.seg); break;
+      case 'segupdate': this.#add(m.seg); break;
+      case 'draft': (this.draft ||= {})[m.lang] = m.text; break;
       case 'tr': {
         const s = this.byId.get(m.id);
-        if (s) { s.tr[m.lang] = m.text; s.trDone[m.lang] = m.done; }
+        if (s) { s.tr[m.lang] = m.text; s.trDone[m.lang] = m.done; (s.trErr ||= {})[m.lang] = !!m.error; }
         break;
       }
       case 'partial': this.partial = m.partial; break;
       case 'settings': this.settings = m.settings; break;
-      case 'clear': this.segments = []; this.byId.clear(); this.partial = null; break;
+      case 'clear': this.segments = []; this.byId.clear(); this.partial = null; this.draft = {}; break;
       case 'info': this.joinUrl = m.joinUrl; break;
       case 'live': this.live = m.live; break;
       default: break;

@@ -25,6 +25,7 @@ function render() {
   applyLook(s, { portrait: isPortrait() });
   renderHeader($('.hdr'), s);
   document.body.classList.toggle('blank', s.blank);
+  $('.live-badge').classList.toggle('on', !!store.live && !s.blank);
   document.body.classList.toggle('labels-off', !s.showLabels);
   renderLanes(s);
   renderOriginal(s);
@@ -63,11 +64,15 @@ function renderLanes(s) {
   for (const [code, lane] of laneEls) {
     const inner = lane.querySelector('.inner');
     const live = store.partial && store.partial.lang === code;
-    const segs = store.segments.slice(-(live ? Math.max(1, shown - 1) : shown));
+    const draft = !live && store.partial && store.draft?.[code]; // fast mode: translation of what is being said right now
+    const hasLive = live || !!draft;
+    const segs = store.segments.slice(-(hasLive ? Math.max(1, shown - 1) : shown));
     const items = [];
     segs.forEach((seg, i) => {
-      const text = seg.tr[code] ?? (seg.src === code ? seg.text : '');
-      const last = i === segs.length - 1 && !live;
+      let text = seg.tr[code] ?? (seg.src === code ? seg.text : '');
+      const failed = !text && seg.trErr?.[code];
+      if (failed) text = '—';
+      const last = i === segs.length - 1 && !hasLive;
       if (!text && !last) return;
       const done = seg.trDone[code] || seg.src === code;
       items.push({
@@ -78,6 +83,7 @@ function renderLanes(s) {
       });
     });
     if (live) items.push({ key: 'live', text: store.partial.text, cls: 'seg live cur', spk: s.showSpeaker ? store.partial.speaker && `Speaker ${store.partial.speaker}` : '' });
+    else if (draft) items.push({ key: 'live', text: draft, cls: 'seg live cur draft', spk: '' });
     reconcile(inner, items);
     sizes.set(lane, fitSize(lane, inner, `${items.map((i) => i.text).join('¶')}|${s.fontScale}|${s.layout}`));
   }

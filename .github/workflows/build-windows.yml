@@ -1,0 +1,46 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: [claude/clever-cannon-ritjuc, main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+        continue-on-error: true
+
+      - name: Build installer (Setup.exe) and portable exe
+        run: npm run dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiveTranslate-Windows
+          path: dist/*.exe
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Live Translate (build ${{ github.run_number }})
+          prerelease: true
+          body: |
+            **LiveTranslate-Setup-*.exe** installs the app (Start menu + desktop shortcut).
+            **LiveTranslate-Portable-*.exe** runs without installing.
+          files: dist/*.exe

@@ -32,6 +32,7 @@
     <header class="page-h">
       <div><h1 id="page-title">Live</h1><p id="page-sub"></p></div>
       <div class="pills">
+        <span class="onair" id="onair" hidden><i></i><b>ON AIR</b><span id="onair-time">00:00</span></span>
         <span class="pill" id="pill-stt" data-state="idle"><i></i><span>Speech: idle</span></span>
         <span class="pill" id="pill-tr" data-state="idle"><i></i><span>Translation</span></span>
         <span class="pill" id="pill-viewers" hidden><i></i><span></span></span>
@@ -42,29 +43,48 @@
       <main class="main">
         <!-- ============================= LIVE ============================= -->
         <section class="tab on" id="tab-live">
+          <div class="card setup" id="setup" hidden>
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>Let's get you set up</h3><p>Two keys make it hear and translate. It takes about two minutes, once.</p></div></div>
+            <div class="steps">
+              <div class="step" id="step-dg"><span class="num">1</span><div><b>Speech key · Deepgram</b><small>Turns your voice into text</small></div><button class="btn" data-goto="settings">Add key</button></div>
+              <div class="step" id="step-an"><span class="num">2</span><div><b>Translation key · Claude</b><small>Translates the text into every language</small></div><button class="btn" data-goto="settings">Add key</button></div>
+              <div class="step" id="step-demo"><span class="num">3</span><div><b>Just looking around?</b><small>The demo plays a short talk in all languages, no keys needed</small></div><button class="btn primary" id="try-demo"><svg class="ic"><use href="/assets/icons.svg#i-play"/></svg>Try the demo</button></div>
+            </div>
+          </div>
+
           <div class="card hero">
             <div class="hero-top">
               <button class="go" id="go"><svg class="ic"><use id="go-ico" href="/assets/icons.svg#i-mic"/></svg><span id="go-text">Start listening</span></button>
               <canvas id="wave" height="64"></canvas>
+            </div>
+            <div class="pipe" id="pipe">
+              <div class="node" id="n-mic"><i></i><div><b>Microphone</b><small>Off</small></div></div>
+              <span class="arrow"></span>
+              <div class="node" id="n-stt"><i></i><div><b>Speech</b><small>Off</small></div></div>
+              <span class="arrow"></span>
+              <div class="node" id="n-txt"><i></i><div><b>Text</b><small>Off</small></div></div>
+              <span class="arrow"></span>
+              <div class="node" id="n-tr"><i></i><div><b>Translation</b><small>Off</small></div></div>
             </div>
             <div class="warn" id="mic-warn" hidden></div>
             <div class="grid2 tight">
               <label class="f">Engine
                 <select id="engine">
                   <option value="deepgram">Deepgram · best quality</option>
-                  <option value="browser">Browser · free (Chrome / Edge)</option>
+                  <option value="browser" id="opt-browser">Browser · free (Chrome / Edge)</option>
                   <option value="demo">Demo · no keys needed</option>
                 </select>
               </label>
               <label class="f">Microphone
-                <select id="device"><option value="">Default microphone</option></select>
+                <span class="inline"><select id="device"><option value="">Default microphone</option></select><button class="btn" id="test-mic" type="button"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg>Test</button></span>
               </label>
             </div>
 
             <div class="label-row"><span>Speaker's language</span><small>press <kbd>1</kbd>–<kbd>9</kbd></small></div>
             <div class="chips" id="source"></div>
-            <div class="row gap" style="margin-top:12px">
+            <div class="checks" style="margin-top:14px">
               <label class="check"><input type="checkbox" id="multi"><span>Several people talking · label the speakers</span></label>
+              <label class="check"><input type="checkbox" data-set="fastMode"><span>Faster mode · translate while the speaker is still talking <em class="tag-soft">uses more Claude calls</em></span></label>
             </div>
             <p class="hint" id="auto-hint" hidden>Auto detects English, Spanish, French, Italian, German and a few more. For Arabic, Chinese or Turkish, pick the language.</p>
           </div>
@@ -220,6 +240,7 @@
           <div class="card">
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg></span><div><h3>Speech recognition · Deepgram</h3><p>Streams your microphone for fast, accurate text. Get a key at deepgram.com.</p></div><span class="badge" id="badge-dg"></span></div>
             <input id="key-dg" type="password" placeholder="Paste Deepgram API key" autocomplete="off">
+            <div class="row gap" style="margin-top:12px"><button class="btn primary save-keys">Save</button><button class="btn" id="test-dg">Test key</button><span class="hint test-result" id="dg-result"></span></div>
           </div>
           <div class="card">
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg></span><div><h3>Translation · Claude</h3><p>Translates each sentence with the context of what was said before. Get a key at console.anthropic.com.</p></div><span class="badge" id="badge-an"></span></div>
@@ -231,12 +252,21 @@
                 <option value="claude-opus-5-5">Claude Opus 5.5 · best quality, slowest</option>
               </select>
             </label>
-            <div class="row gap"><button class="btn primary" id="save-keys">Save</button><button class="btn" id="test-an">Test translation</button><span class="hint" id="test-result"></span></div>
+            <div class="row gap"><button class="btn primary save-keys">Save</button><button class="btn" id="test-an">Test key</button><span class="hint test-result" id="test-result"></span></div>
           </div>
           <div class="card">
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-wifi"/></svg></span><div><h3>Network</h3><p>Phones must be on the same Wi-Fi as this computer, or on its hotspot. If Windows asks about access, choose <b>Private networks</b>.</p></div></div>
             <label class="f">Address shown to phones <select id="host"></select></label>
             <p class="hint mono" id="join-url"></p>
+          </div>
+          <div class="card" id="desktop-card" hidden>
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg></span><div><h3>Big screen window</h3><p>Choose which monitor or projector shows the translation.</p></div></div>
+            <label class="f">Show the big screen on <select id="display-pick"></select></label>
+            <p class="hint" id="display-hint"></p>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sliders"/></svg></span><div><h3>Troubleshooting</h3><p>If something doesn't work, copy the diagnostics and send them to whoever is helping you. They contain no keys and none of your speech.</p></div></div>
+            <div class="row gap"><button class="btn" id="copy-diag"><svg class="ic"><use href="/assets/icons.svg#i-copy"/></svg>Copy diagnostics</button><button class="btn" id="open-data" hidden><svg class="ic"><use href="/assets/icons.svg#i-file"/></svg>Open data &amp; logs folder</button><span class="hint" id="app-version"></span></div>
           </div>
         </section>
       </main>
@@ -248,10 +278,10 @@
           <div class="join-body">
             <img id="qr" alt="QR code" width="128" height="128">
             <div class="join-info">
-              <div class="mono link" id="join-link"></div>
               <button class="btn" id="copy-link"><svg class="ic"><use href="/assets/icons.svg#i-copy"/></svg>Copy link</button>
             </div>
           </div>
+          <div class="mono link" id="join-link"></div>
           <label class="check" style="margin-top:14px"><input type="checkbox" data-set="showQR"><span>Show the QR code on the big screen</span></label>
           <label class="f" style="margin-top:10px">QR position
             <select data-set="qrPos"><option value="top-right">Top right</option><option value="top-left">Top left</option><option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option><option value="center">Centre, large</option></select>

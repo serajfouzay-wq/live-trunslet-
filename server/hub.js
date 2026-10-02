@@ -6,7 +6,8 @@ import { DIRS, config } from './config.js';
 import { LANGUAGES } from './languages.js';
 import { DEFAULT_SETTINGS, sanitize, saveSettings, viewerSettings } from './settings.js';
 import { detectLang } from './detect.js';
-import { translate } from './translate.js';
+import { translate, explain, isFatal } from './translate.js';
+import { log } from './log.js';
 import { createDeepgram } from './stt/deepgram.js';
 import { runDemo } from './demo.js';
 
@@ -15,6 +16,8 @@ const CJK_START = /^[㐀-鿿]/;
 const join = (a, b) => (!a ? b : CJK_END.test(a) && CJK_START.test(b) ? a + b : `${a} ${b}`);
 const SENTENCE_END = /[.!?…。！？؟]["'”’)\]]*$/;
 const SOFT_END = /[,;:،؛，、：]$/;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const freshPipe = () => ({ audioChunks: 0, audioBytes: 0, lastAudioAt: 0, lastResultAt: 0, results: 0, segments: 0, trOk: 0, trFail: 0, trMs: 0, lastError: '', startedAt: Date.now() });
 
 export class Hub {
   constructor(settings) {
@@ -34,6 +37,8 @@ export class Hub {
     this.dg = null;
     this.demoAbort = null;
     this.joinUrl = '';
+    this.pipe = freshPipe();
+    this.draft = { lastAt: 0, lastLen: 0, ctl: new Map(), text: {}, timers: new Map() };
     this.newSession();
   }
 
@@ -128,7 +133,9 @@ export class Hub {
     for (const l of Object.keys(seg.tr)) {
       if (this.wants(client, l)) { tr[l] = seg.tr[l]; trDone[l] = !!seg.trDone[l]; }
     }
-    return { id: seg.id, t: seg.t, speaker: seg.speaker, src: seg.src, text: seg.text, tr, trDone };
+    const trErr = {};
+    for (const l of Object.keys(seg.trErr || {})) if (seg.trErr[l] && this.wants(client, l)) trErr[l] = true;
+    return { id: seg.id, t: seg.t, speaker: seg.speaker, src: seg.src, text: seg.text, tr, trDone, trErr };
   }
 
   scheduleStats() {
@@ -155,11 +162,51 @@ export class Hub {
       running: this.running,
       engine: this.engine,
       stt: this.stt,
-      translator: config.anthropicKey ? 'claude' : 'demo',
+      translator: config.anthropicKey ? 'claude' : this.engine === 'demo' ? 'demo' : 'missing',
+    };
+  }
+
+  /** Live health of the whole chain (microphone -> speech -> text -> translation). */
+  pipeMsg() {
+    const p = this.pipe;
+    const now = Date.now();
+    return {
+      type: 'pipe',
+      running: this.running,
+      engine: this.engine,
+      audioKB: Math.round(p.audioBytes / 1024),
+      audioAgo: p.lastAudioAt ? now - p.lastAudioAt : null,
+      textAgo: p.lastResultAt ? now - p.lastResultAt : null,
+      sinceStart: now - p.startedAt,
+      results: p.results,
+      segments: p.segments,
+      trOk: p.trOk,
+      trFail: p.trFail,
+      avgMs: p.trOk ? Math.round(p.trMs / p.trOk) : null,
+      lastError: p.lastError,
+      stt: this.stt,
+    };
+  }
+
+  diagnostics() {
+    return {
+      time: new Date().toISOString(),
+      running: this.running,
+      engine: this.engine,
+      stt: this.stt,
+      keys: { deepgram: !!config.deepgramKey, claude: !!config.anthropicKey },
+      model: config.model,
+      sourceLang: this.settings.sourceLang,
+      screenLangs: this.settings.screenLangs,
+      fastMode: this.settings.fastMode,
+      viewers: this.statsMsg(),
+      pipe: this.pipeMsg(),
+      segments: this.segments.length,
     };
   }
 
   setStt(state, detail = '') {
+    if (this.stt.state !== state || this.stt.detail !== detail) log(state === 'error' ? 'error' : 'info', `speech: ${state} ${detail}`);
     this.stt = { state, detail };
     this.broadcast(this.statusMsg(), ['control']);
   }
@@ -216,6 +263,7 @@ export class Hub {
   ingestStt(ev) {
     if (ev.utteranceEnd) { this.commit(); return; }
     const text = (ev.text || '').trim();
+    if (text) { this.pipe.lastResultAt = Date.now(); this.pipe.results += 1; }
     const multi = this.settings.speakerMode === 'multi';
     const speaker = multi ? ev.speaker ?? null : null;
 
@@ -244,6 +292,7 @@ export class Hub {
       this.scheduleFlush(2500);
     }
     this.pushPartial();
+    this.maybeDraft();
   }
 
   scheduleFlush(ms = 1800) {
@@ -284,7 +333,10 @@ export class Hub {
       text,
       tr: {},
       trDone: {},
+      trErr: {},
     };
+    this.pipe.segments += 1;
+    this.stopDrafts(seg);
     this.segments.push(seg);
     this.persist();
     this.broadcast({ type: 'segment', seg: this.segmentView(seg, { role: 'control' }) }, ['control']);
@@ -324,9 +376,11 @@ export class Hub {
     }
   }
 
-  async runTranslation(seg, lang) {
+  async runTranslation(seg, lang, attempt = 0) {
     const idx = this.segments.indexOf(seg);
     const history = this.segments.slice(Math.max(0, idx - 3), Math.max(0, idx)).map((s) => ({ src: s.text, tr: s.tr[lang] }));
+    const t0 = Date.now();
+    seg.trErr = seg.trErr || {};
     try {
       const out = await translate({
         text: seg.text,
@@ -337,24 +391,96 @@ export class Hub {
         context: this.settings.context,
         onDelta: (partial) => {
           seg.tr[lang] = partial;
+          seg.trErr[lang] = false;
           this.emitTr(seg, lang, false);
         },
       });
       seg.tr[lang] = out;
       seg.trDone[lang] = true;
+      seg.trErr[lang] = false;
+      this.pipe.trOk += 1;
+      this.pipe.trMs += Date.now() - t0;
       this.emitTr(seg, lang, true);
       this.persist();
     } catch (e) {
-      console.error(`Translation to ${lang} failed:`, e.message);
-      this.notify('error', `Translation to ${LANGUAGES[lang].name} failed: ${e.message}`);
+      if (e?.name === 'AbortError') return;
+      if (!isFatal(e) && attempt < 1) {
+        log('warn', `translation to ${lang} failed (${e.message}); retrying`);
+        await sleep(1500);
+        return this.runTranslation(seg, lang, attempt + 1);
+      }
+      const why = explain(e);
+      log('error', `translation to ${lang} failed: ${e.message}`);
+      this.pipe.trFail += 1;
+      this.pipe.lastError = why;
+      seg.trErr[lang] = true;
+      this.emitTr(seg, lang, false);
+      this.notify('error', why);
     }
+  }
+
+  /** Try again for every language of a sentence that failed. */
+  retrySegment(id) {
+    const seg = this.segments.find((s) => s.id === id);
+    if (!seg) return;
+    for (const lang of Object.keys(seg.trErr || {})) if (seg.trErr[lang]) { seg.trErr[lang] = false; seg.tr[lang] = ''; }
+    this.translateSeg(seg, this.wantedLangs());
+  }
+
+  /* ----------------------------------------------------------- fast mode */
+  // While the speaker is still talking, translate what has been said so far (at most once every ~1.5 s per
+  // language) and show it as a draft. The final translation replaces it as soon as the sentence ends.
+
+  maybeDraft() {
+    if (!this.settings.fastMode || !this.running || this.engine === 'demo' || !config.anthropicKey) return;
+    const part = this.currentPartial();
+    if (!part) return;
+    const cjk = part.lang === 'zh';
+    const units = cjk ? part.text.length / 2 : part.text.split(/\s+/).length;
+    const now = Date.now();
+    if (units < 4 || now - this.draft.lastAt < 1500 || part.text.length - this.draft.lastLen < (cjk ? 5 : 14)) return;
+    this.draft.lastAt = now;
+    this.draft.lastLen = part.text.length;
+    for (const lang of this.wantedLangs()) {
+      if (lang === part.lang) continue;
+      this.draft.ctl.get(lang)?.abort();
+      const ctl = new AbortController();
+      this.draft.ctl.set(lang, ctl);
+      const idx = this.segments.length;
+      const history = this.segments.slice(Math.max(0, idx - 2)).map((s) => ({ src: s.text, tr: s.tr[lang] }));
+      translate({
+        text: part.text, from: part.lang, to: lang, history, glossary: this.settings.glossary, context: this.settings.context, signal: ctl.signal,
+        onDelta: (text) => { this.draft.text[lang] = text; this.emitDraft(lang); },
+      }).catch((e) => { if (e?.name !== 'AbortError') log('warn', `draft translation to ${lang} failed: ${e.message}`); });
+    }
+  }
+
+  emitDraft(lang) {
+    if (this.draft.timers.has(lang)) return;
+    this.draft.timers.set(lang, setTimeout(() => {
+      this.draft.timers.delete(lang);
+      const msg = JSON.stringify({ type: 'draft', lang, text: this.draft.text[lang] || '' });
+      for (const c of this.clients) if ((c.role === 'display' || c.role === 'control') && this.wants(c, lang) && c.ws.readyState === WebSocket.OPEN) c.ws.send(msg);
+    }, 80));
+  }
+
+  /** The sentence ended: cancel pending drafts and use the latest one as the first text of the real translation. */
+  stopDrafts(seg) {
+    for (const ctl of this.draft.ctl.values()) ctl.abort();
+    this.draft.ctl.clear();
+    for (const t of this.draft.timers.values()) clearTimeout(t);
+    this.draft.timers.clear();
+    if (seg) for (const [lang, text] of Object.entries(this.draft.text)) if (text && lang !== seg.src) seg.tr[lang] = text;
+    this.draft.text = {};
+    this.draft.lastAt = 0;
+    this.draft.lastLen = 0;
   }
 
   emitTr(seg, lang, done) {
     const key = `${seg.id}:${lang}`;
     const send = () => {
       this.trTimers.delete(key);
-      const msg = JSON.stringify({ type: 'tr', id: seg.id, lang, text: seg.tr[lang] ?? '', done: !!seg.trDone[lang] });
+      const msg = JSON.stringify({ type: 'tr', id: seg.id, lang, text: seg.tr[lang] ?? '', done: !!seg.trDone[lang], error: !!seg.trErr?.[lang] });
       for (const c of this.clients) if (this.wants(c, lang) && c.ws.readyState === WebSocket.OPEN) c.ws.send(msg);
     };
     if (done) {
@@ -371,6 +497,7 @@ export class Hub {
     seg.text = text.trim().slice(0, 4000);
     seg.tr = {};
     seg.trDone = {};
+    seg.trErr = {};
     for (const c of this.clients) this.send(c, { type: 'segupdate', seg: this.segmentView(seg, c) });
     this.translateSeg(seg, this.wantedLangs());
     this.persist();
@@ -382,14 +509,20 @@ export class Hub {
     if (this.running) this.stop();
     this.owner = owner || null;
     engine = ['deepgram', 'browser', 'demo'].includes(engine) ? engine : config.sttEngine;
+    if (engine === 'deepgram' && !config.deepgramKey) {
+      this.owner = null;
+      this.notify('error', 'No Deepgram API key yet. Add it under Settings, or choose the Demo engine.');
+      this.setStt('error', 'No Deepgram key');
+      return;
+    }
+    // Mark as running BEFORE opening the engine: engines report status while they connect.
     this.engine = engine;
+    this.running = true;
+    this.pipe = freshPipe();
+    log('info', `start listening: engine=${engine} source=${this.settings.sourceLang} model=${config.model}`);
+    clearInterval(this.pipeTimer);
+    this.pipeTimer = setInterval(() => this.broadcast(this.pipeMsg(), ['control']), 1000);
     if (engine === 'deepgram') {
-      if (!config.deepgramKey) {
-        this.engine = null;
-        this.notify('error', 'No Deepgram API key yet. Add it under Settings, or choose the Browser or Demo engine.');
-        this.setStt('error', 'No Deepgram key');
-        return;
-      }
       this.openDeepgram();
     } else if (engine === 'demo') {
       this.demoAbort = new AbortController();
@@ -398,7 +531,6 @@ export class Hub {
     } else {
       this.setStt('connected', 'browser');
     }
-    this.running = true;
     this.broadcast(this.statusMsg(), ['control']);
     this.setLive(true);
   }
@@ -428,11 +560,17 @@ export class Hub {
   }
 
   audio(buf) {
+    this.pipe.audioChunks += 1;
+    this.pipe.audioBytes += buf.length;
+    this.pipe.lastAudioAt = Date.now();
     this.dg?.send(buf);
   }
 
   stop() {
     this.commit();
+    log('info', 'stop listening');
+    clearInterval(this.pipeTimer);
+    this.stopDrafts();
     this.dg?.close();
     this.dg = null;
     this.demoAbort?.abort();

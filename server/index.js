@@ -10,12 +10,18 @@ import { Hub } from './hub.js';
 import { loadSettings, viewerSettings } from './settings.js';
 import { isLang } from './languages.js';
 import { lanAddresses, isLoopback } from './net.js';
-import { testAnthropic } from './translate.js';
+import { testAnthropic, explain } from './translate.js';
+import { testDeepgram } from './health.js';
+import { log, recentLog, LOG_DIR } from './log.js';
 import { registerLibrary } from './library.js';
+
+process.on('uncaughtException', (e) => log('error', `uncaught: ${e.stack || e}`));
+process.on('unhandledRejection', (e) => log('error', `unhandled: ${e?.stack || e}`));
 
 const app = express();
 const server = http.createServer(app);
 const hub = new Hub(loadSettings());
+export const APP_VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
 function joinUrl() {
   const host = config.publicHost || lanAddresses()[0]?.address || 'localhost';
@@ -63,7 +69,13 @@ api.put('/config', (req, res) => {
 });
 
 api.post('/config/test/anthropic', async (req, res) => {
-  try { res.json({ ok: true, sample: await testAnthropic() }); } catch (e) { res.json({ ok: false, error: e.message }); }
+  try { res.json({ ok: true, sample: await testAnthropic() }); } catch (e) { res.json({ ok: false, error: explain(e) }); }
+});
+api.post('/config/test/deepgram', async (req, res) => res.json(await testDeepgram()));
+
+/** Everything useful for finding out why something does not work (no keys, no transcript text). */
+api.get('/diagnostics', (req, res) => {
+  res.json({ app: APP_VERSION, node: process.version, platform: `${process.platform} ${process.arch}`, port: config.port, logDir: LOG_DIR, ...hub.diagnostics(), log: recentLog(120) });
 });
 
 const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
@@ -143,6 +155,7 @@ function controlMessage(client, data, isBinary) {
     case 'clearScreen': hub.clearScreen(); break;
     case 'newSession': hub.newSession(m.name); break;
     case 'edit': hub.editSegment(m.id, m.text); break;
+    case 'retry': hub.retrySegment(m.id); break;
     default: break;
   }
 }
@@ -156,11 +169,26 @@ setInterval(() => {
 }, 25000);
 
 function shutdown() { hub.stop(); hub.persistNow(); process.exit(0); }
+export { shutdown, hub };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-server.listen(config.port, '0.0.0.0', () => {
-  const local = `http://localhost:${config.port}`;
+/** Listen on the configured port, or the next free one if another program is using it. */
+function listen(port, triesLeft = 20) {
+  return new Promise((resolve, reject) => {
+    const onError = (e) => {
+      if (e.code === 'EADDRINUSE' && triesLeft > 0) { server.off('error', onError); listen(port + 1, triesLeft - 1).then(resolve, reject); } else reject(e);
+    };
+    server.once('error', onError);
+    server.listen(port, '0.0.0.0', () => { server.off('error', onError); resolve(port); });
+  });
+}
+
+export const ready = listen(config.port).then((port) => {
+  config.port = port;
+  hub.setJoinUrl(joinUrl());
+  const local = `http://localhost:${port}`;
+  log('info', `Live Translate ${APP_VERSION} running on port ${port}`);
   console.log('\n  Live Translate is running\n');
   console.log(`  Control panel  ${local}/control   (this computer only)`);
   console.log(`  Big screen     ${local}/display`);
@@ -169,4 +197,6 @@ server.listen(config.port, '0.0.0.0', () => {
     const cmd = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', `${local}/control`]] : process.platform === 'darwin' ? ['open', [`${local}/control`]] : ['xdg-open', [`${local}/control`]];
     try { spawn(cmd[0], cmd[1], { stdio: 'ignore', detached: true }).unref(); } catch { /* ignore */ }
   }
+  return { port, hub };
 });
+ready.catch((e) => { console.error('Could not start the server:', e.message); process.exit(1); });

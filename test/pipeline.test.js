@@ -29,6 +29,10 @@ function sse(res, text) {
 
 before(async () => {
   mockAnthropic = http.createServer((req, res) => {
+    if (req.method === 'GET' && req.url.startsWith('/v1/projects')) {
+      res.writeHead(req.headers.authorization === 'Token dg-key' ? 200 : 401, { 'content-type': 'application/json' });
+      return res.end('{}');
+    }
     let body = '';
     req.on('data', (c) => (body += c));
     req.on('end', () => {
@@ -68,7 +72,7 @@ before(async () => {
   const port = 3900 + Math.floor(Math.random() * 90);
   base = `127.0.0.1:${port}`;
   server = spawn(process.execPath, ['server/index.js'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ANTHROPIC_API_KEY: 'test-key', ANTHROPIC_BASE_URL: `http://127.0.0.1:${aPort}`, DEEPGRAM_API_KEY: 'dg-key', DEEPGRAM_URL: `ws://127.0.0.1:${dgPort}` },
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, ANTHROPIC_API_KEY: 'test-key', ANTHROPIC_BASE_URL: `http://127.0.0.1:${aPort}`, DEEPGRAM_API_KEY: 'dg-key', DEEPGRAM_URL: `ws://127.0.0.1:${dgPort}`, DEEPGRAM_REST_URL: `http://127.0.0.1:${aPort}` },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise((resolve, reject) => {
@@ -217,4 +221,47 @@ test('saved events round-trip', async () => {
   assert.equal(list[0].name, 'Day 1');
   await api('DELETE', `/events/${id}`);
   assert.equal((await (await api('GET', '/events')).json()).length, 0);
+});
+
+test('keys can be tested and diagnostics are available', async () => {
+  const dgTest = await (await api('POST', '/config/test/deepgram')).json();
+  assert.equal(dgTest.ok, true);
+  const anTest = await (await api('POST', '/config/test/anthropic')).json();
+  assert.equal(anTest.ok, true);
+  const d = await (await api('GET', '/diagnostics')).json();
+  assert.equal(d.keys.deepgram, true);
+  assert.ok(d.app && d.node && Array.isArray(d.log));
+  assert.ok(!JSON.stringify(d).includes('dg-key'), 'diagnostics never contain keys');
+});
+
+test('fast mode shows a draft translation while the speaker is still talking', async () => {
+  await api('PATCH', '/settings', { fastMode: true, screenLangs: ['en', 'fr'], sourceLang: 'en' });
+  const ctl = client('control');
+  await ctl.ready;
+  ctl.send({ type: 'start', engine: 'browser' });
+  await ctl.until((m) => m.type === 'status' && m.running);
+  ctl.send({ type: 'stt', text: 'we are going to talk about the future of', final: false, lang: 'en' });
+  const draft = await ctl.until((m) => m.type === 'draft' && m.lang === 'fr' && m.text.includes('the future'));
+  assert.match(draft.text, /^\[French\]/);
+  ctl.send({ type: 'stt', text: 'we are going to talk about the future of energy.', final: true, speechFinal: true, lang: 'en' });
+  const seg = await ctl.until((m) => m.type === 'segment' && m.seg.text.endsWith('energy.'));
+  assert.ok(seg.seg.tr.fr, 'the segment starts with the draft so the screen never goes blank');
+  await ctl.until((m) => m.type === 'tr' && m.id === seg.seg.id && m.lang === 'fr' && m.done);
+  const pipe = await ctl.until((m) => m.type === 'pipe');
+  assert.equal(pipe.engine, 'browser');
+  ctl.send({ type: 'stop' });
+  await api('PATCH', '/settings', { fastMode: false });
+  ctl.ws.close();
+});
+
+test('without a Claude key only the demo talk is translated, and the error is clear', async () => {
+  process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'lt-nokey-'));
+  delete process.env.ANTHROPIC_API_KEY;
+  const { translate, explain, MissingKeyError } = await import('../server/translate.js');
+  await assert.rejects(() => translate({ text: 'Something new', from: 'en', to: 'ar' }), MissingKeyError);
+  assert.match(explain(new MissingKeyError()), /Anthropic key/);
+  const hit = await translate({ text: 'Good evening everyone, and welcome to our annual conference.', from: 'en', to: 'fr' });
+  assert.match(hit, /Bonsoir/);
+  assert.match(explain({ status: 401 }), /rejected/);
+  assert.match(explain({ status: 429 }), /rate/);
 });

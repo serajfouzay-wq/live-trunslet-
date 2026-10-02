@@ -3,7 +3,7 @@ import path from 'node:path';
 import { DATA } from './config.js';
 import { LANG_CODES, isLang } from './languages.js';
 
-export const THEMES = ['midnight', 'aurora', 'gold', 'light', 'contrast'];
+export const THEMES = ['midnight', 'aurora', 'neon', 'sunset', 'emerald', 'gold', 'light', 'contrast'];
 export const LAYOUTS = ['stack', 'columns', 'grid', 'focus', 'subtitles'];
 export const LOGO_POS = ['top-left', 'top-center', 'top-right'];
 export const QR_POS = ['bottom-right', 'bottom-left', 'top-right', 'top-left', 'center'];
@@ -35,6 +35,7 @@ export const DEFAULT_SETTINGS = {
   blank: false,
   sourceLang: 'en', // a language code or "auto"
   speakerMode: 'single', // single | multi
+  fastMode: false, // translate while the speaker is still talking (more API calls, much lower delay)
   glossary: '',
   context: '',
 };
@@ -75,6 +76,7 @@ const RULES = {
   blank: bool,
   sourceLang: (v) => (v === 'auto' || isLang(v) ? v : undefined),
   speakerMode: (v) => oneOf(v, ['single', 'multi']),
+  fastMode: bool,
   glossary: (v) => str(v, 8000),
   context: (v) => str(v, 1000),
 };

@@ -120,7 +120,8 @@ function drawFeed() {
     let c = cards.get(seg.id);
     if (!c) { c = makeCard(); cards.set(seg.id, c); feed.append(c.el); }
     for (const l of c.lines) {
-      const text = seg.tr[l.code] ?? (seg.src === l.code ? seg.text : '');
+      let text = seg.tr[l.code] ?? (seg.src === l.code ? seg.text : '');
+      if (!text && seg.trErr?.[l.code]) text = '—';
       if (l.txt.textContent !== text) l.txt.textContent = text;
       l.ln.classList.toggle('pending', !text);
     }

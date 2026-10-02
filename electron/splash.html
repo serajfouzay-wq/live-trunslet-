@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;color:#eaf0ff;background:#060a13}
+  body{display:grid;place-items:center;background:radial-gradient(600px 400px at 20% 0%,rgba(80,110,255,.35),transparent 60%),radial-gradient(500px 400px at 100% 100%,rgba(140,90,255,.3),transparent 60%),#060a13}
+  .box{text-align:center}
+  .logo{width:92px;height:92px;border-radius:26px;margin:0 auto 22px;background:linear-gradient(135deg,#2f7dff,#8a5cff);display:grid;place-items:center;box-shadow:0 18px 50px rgba(80,100,255,.55);animation:pop 1.6s ease-in-out infinite}
+  .logo svg{width:46px;height:46px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  h1{margin:0;font-size:26px;font-weight:650;letter-spacing:.01em}
+  p{margin:8px 0 0;color:#8b9bbd;font-size:14px}
+  .bar{width:180px;height:4px;border-radius:4px;background:rgba(255,255,255,.1);margin:24px auto 0;overflow:hidden}
+  .bar i{display:block;height:100%;width:40%;border-radius:4px;background:linear-gradient(90deg,#3b82ff,#a06bff);animation:slide 1.2s ease-in-out infinite}
+  @keyframes slide{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+  @keyframes pop{50%{transform:scale(1.06)}}
+</style></head><body><div class="box">
+  <div class="logo"><svg viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></div>
+  <h1>Live Translate</h1><p>Starting…</p><div class="bar"><i></i></div>
+</div></body></html>

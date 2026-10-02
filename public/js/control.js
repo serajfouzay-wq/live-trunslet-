@@ -7,6 +7,8 @@ let status = { running: false, engine: null, stt: { state: 'idle' }, translator:
 let cfg = { hasDeepgram: false, hasAnthropic: false, model: '', sttEngine: 'deepgram' };
 let net = { addresses: [], joinUrl: '' };
 let viewers = { display: 0, phone: 0, langs: {} };
+let pipe = null;
+const desktop = window.desktop || null;
 
 /* ------------------------------------------------------------------ toasts */
 function toast(msg, level = '') {
@@ -27,10 +29,14 @@ const conn = connect('control', {
       case 'segment': case 'tr': case 'segupdate': case 'partial': case 'clear': scheduleFeed(); break;
       case 'status':
         status = m;
-        if (!m.running && (mic || recognition)) { recognition?.abort(); recognition = null; stopMic(); $('#mic-warn').hidden = true; }
+        // Another page (or a server restart) stopped listening: release our microphone. The grace period
+        // ignores the status messages that arrive while a start we just requested is still settling.
+        if (!m.running && (mic || recognition) && Date.now() - startedAt > 4000) { recognition?.abort(); recognition = null; stopMic(); $('#mic-warn').hidden = true; }
         renderStatus();
         break;
       case 'viewers': viewers = m; renderStatus(); renderPhoneLangs(); break;
+      case 'pipe': pipe = m; renderPipe(); break;
+      case 'draft': scheduleFeed(); break;
       case 'notice': toast(m.message, m.level); break;
       case 'info': net.joinUrl = m.joinUrl; renderNet(); renderJoin(); break;
       default: break;
@@ -91,7 +97,7 @@ function renderStatus() {
   const s = status.stt || {};
   const label = { idle: 'Speech: idle', connecting: 'Speech: connecting…', connected: `Speech: ${status.engine || 'ready'}`, error: `Speech: ${s.detail || 'error'}` }[s.state] || 'Speech';
   setPill('#pill-stt', s.state === 'idle' ? 'idle' : s.state, label);
-  setPill('#pill-tr', status.translator === 'claude' ? 'ok' : 'idle', status.translator === 'claude' ? 'Translation: Claude' : 'Translation: demo (no key)');
+  setPill('#pill-tr', status.translator === 'claude' ? 'ok' : status.translator === 'demo' ? 'idle' : 'error', status.translator === 'claude' ? 'Translation: Claude' : status.translator === 'demo' ? 'Translation: demo' : 'Translation: no Claude key');
   const v = $('#pill-viewers');
   v.hidden = false;
   v.dataset.state = viewers.display + viewers.phone > 0 ? 'ok' : 'idle';
@@ -101,7 +107,75 @@ function renderStatus() {
   $('#go-text').textContent = status.running ? 'Stop listening' : 'Start listening';
   $('#go-ico').setAttribute('href', `/assets/icons.svg#i-${status.running ? 'stop' : 'mic'}`);
   $('#engine').disabled = status.running;
+  $('.hero').classList.toggle('live', !!status.running);
+  const oa = $('#onair');
+  oa.hidden = !status.running;
+  if (status.running && !onAirSince) onAirSince = Date.now();
+  if (!status.running) onAirSince = 0;
+  renderPipe();
 }
+
+let onAirSince = 0;
+setInterval(() => {
+  if (!onAirSince) return;
+  const t = Math.floor((Date.now() - onAirSince) / 1000);
+  $('#onair-time').textContent = `${String(Math.floor(t / 3600)).padStart(2, '0')}:${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}, 1000);
+
+/* ---- the pipeline strip: shows exactly where things stop (mic -> speech -> text -> translation) */
+function setNode(id, state, text) {
+  const n = $(`#${id}`);
+  n.dataset.s = state;
+  n.querySelector('small').textContent = text;
+}
+
+function renderPipe() {
+  const running = !!status.running;
+  const msg = $('#mic-warn');
+  if (!running) {
+    const testing = !!mic;
+    setNode('n-mic', testing ? (Date.now() - lastSound < 3000 ? 'ok' : 'warn') : 'off', testing ? (Date.now() - lastSound < 3000 ? 'Hearing sound' : 'Quiet') : 'Off');
+    setNode('n-stt', 'off', 'Off'); setNode('n-txt', 'off', 'Off');
+    setNode('n-tr', status.translator === 'missing' ? 'warn' : 'off', status.translator === 'missing' ? 'Needs Claude key' : 'Ready');
+    if (!testing) msg.hidden = true;
+    return;
+  }
+  const p = pipe || {};
+  const engine = status.engine;
+  const sinceStart = p.sinceStart ?? 0;
+  let advice = '';
+
+  // microphone
+  if (engine === 'demo') setNode('n-mic', 'ok', 'Demo voice');
+  else if (!mic) { setNode('n-mic', 'bad', 'Not active'); advice = 'The microphone is not active. Press Stop, then Start again and allow microphone access.'; }
+  else if (Date.now() - lastSound > 6000) { setNode('n-mic', 'warn', 'No sound'); advice = 'No sound from the microphone. Check that it is plugged in, not muted, and selected above.'; }
+  else setNode('n-mic', 'ok', 'Hearing sound');
+
+  // speech service
+  const st = (p.stt || status.stt || {});
+  if (engine === 'browser') setNode('n-stt', 'ok', 'Browser');
+  else if (st.state === 'error') { setNode('n-stt', 'bad', st.detail || 'Error'); advice ||= `Speech service problem: ${st.detail || 'unknown'}.`; }
+  else if (st.state === 'connecting') setNode('n-stt', 'warn', 'Connecting…');
+  else if (st.state === 'connected') setNode('n-stt', 'ok', engine === 'deepgram' ? `${p.audioKB ?? 0} KB sent` : 'Connected');
+  else setNode('n-stt', 'warn', 'Starting…');
+
+  // text coming back
+  if (engine === 'deepgram' && sinceStart > 9000 && !p.results && lastSound && Date.now() - lastSound < 4000) {
+    setNode('n-txt', 'warn', 'No text yet');
+    advice ||= `The speech service hears audio but returned no text. Check that the speaker's language (${store.settings.sourceLang === 'auto' ? 'Auto' : store.langs[store.settings.sourceLang]?.name}) is right, and speak a little louder or closer.`;
+  } else if (p.results) setNode('n-txt', p.textAgo != null && p.textAgo < 20000 ? 'ok' : 'warn', `${p.segments || 0} sentence${p.segments === 1 ? '' : 's'}`);
+  else setNode('n-txt', 'warn', 'Listening…');
+
+  // translation
+  if (status.translator === 'missing') { setNode('n-tr', 'bad', 'No Claude key'); advice ||= 'Text is arriving, but there is no Claude key to translate it. Open Settings and add your key.'; }
+  else if (p.trFail && (p.trFail > p.trOk * 0.3)) { setNode('n-tr', 'bad', 'Problem'); advice ||= p.lastError || 'Translation is failing.'; }
+  else if (p.trOk) setNode('n-tr', 'ok', `${(p.avgMs / 1000).toFixed(1)} s each`);
+  else setNode('n-tr', 'warn', status.translator === 'demo' ? 'Demo' : 'Waiting');
+
+  msg.hidden = !advice;
+  msg.textContent = advice;
+}
+setInterval(() => { if (status.running || mic) renderPipe(); }, 1000);
 
 /* ------------------------------------------------------------- renderers */
 function renderAll() {
@@ -118,10 +192,11 @@ const LAYOUTS = {
   focus: ['Focus', '<rect x="2" y="3" width="56" height="26" rx="2"/><rect x="2" y="32" width="27" height="13" rx="2"/><rect x="31" y="32" width="27" height="13" rx="2"/>'],
   subtitles: ['Subtitles', '<rect x="2" y="3" width="56" height="20" rx="2" opacity=".25"/><rect x="2" y="27" width="56" height="8" rx="2"/><rect x="2" y="37" width="56" height="8" rx="2"/>'],
 };
-const THEMES = { midnight: 'Midnight', aurora: 'Aurora', gold: 'Gold', light: 'Light', contrast: 'High contrast' };
+const THEMES = { midnight: 'Midnight', aurora: 'Aurora', neon: 'Neon', sunset: 'Sunset', emerald: 'Emerald', gold: 'Gold', light: 'Light', contrast: 'High contrast' };
 
 const THEME_BG = {
   midnight: 'linear-gradient(135deg,#08101f,#16305f,#0e6b8a)', aurora: 'linear-gradient(135deg,#0a1a24,#2c1163,#0b8f7a)',
+  neon: 'linear-gradient(135deg,#07040f,#2a0a52,#0a6cff)', sunset: 'linear-gradient(135deg,#1a0a1f,#6b1d4a,#f0742e)', emerald: 'linear-gradient(135deg,#04140f,#0b4a3a,#1fb58a)',
   gold: 'linear-gradient(135deg,#070707,#2b2010,#5c4310)', light: 'linear-gradient(135deg,#f6f8fc,#dbe6f8,#c5dcf5)', contrast: 'linear-gradient(135deg,#000,#000 60%,#ffe600)',
 };
 
@@ -282,6 +357,15 @@ function renderFeed() {
     const chip = d.querySelector('.chip');
     chip.textContent = store.partial.lang.toUpperCase(); chip.style.background = L.color;
     const src = d.querySelector('.src'); src.textContent = store.partial.text; src.dir = L.dir;
+    for (const code of store.settings.screenLangs) {
+      if (code === store.partial.lang || !store.draft?.[code]) continue;
+      const line = document.createElement('div');
+      line.className = 'tr pending';
+      line.innerHTML = '<b></b><span></span>';
+      line.firstChild.textContent = code;
+      line.lastChild.textContent = store.draft[code]; line.lastChild.dir = store.langs[code].dir;
+      d.append(line);
+    }
     frag.append(d);
   }
   if (!rows.length && !store.partial) {
@@ -312,6 +396,16 @@ function feedItem(seg, langs) {
     line.innerHTML = '<b></b><span></span>';
     line.firstChild.textContent = code;
     const span = line.lastChild; span.textContent = seg.tr[code] || '…'; span.dir = T.dir;
+    if (seg.trErr?.[code]) {
+      line.className = 'tr err';
+      span.textContent = 'Translation failed';
+      if (!d.querySelector('.retry')) {
+        const b = document.createElement('button');
+        b.className = 'retry'; b.type = 'button'; b.textContent = 'Retry';
+        b.onclick = () => conn.send({ type: 'retry', id: seg.id });
+        d.querySelector('.meta').append(b);
+      }
+    }
     d.append(line);
   }
   return d;
@@ -351,6 +445,7 @@ async function startMic() {
     audio: { deviceId: deviceId ? { exact: deviceId } : undefined, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   });
   const ctx = new AudioContext();
+  if (ctx.state === 'suspended') await ctx.resume();
   await ctx.audioWorklet.addModule('/assets/audio-worklet.js');
   const src = ctx.createMediaStreamSource(stream);
   const node = new AudioWorkletNode(ctx, 'pcm-worklet');
@@ -365,7 +460,23 @@ async function startMic() {
     }
   };
   mic = { stream, ctx };
+  stream.getAudioTracks().forEach((t) => t.addEventListener('ended', onMicEnded));
   listDevices(); // labels become available after permission
+}
+
+let micRecovering = false;
+/** The microphone disappeared (unplugged, or taken by another program): keep trying to get it back. */
+async function onMicEnded() {
+  if (!mic || micRecovering) return;
+  micRecovering = true;
+  toast('The microphone was disconnected. Trying to reconnect…', 'error');
+  stopMic();
+  for (let i = 0; i < 15 && status.running; i += 1) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (!status.running) break;
+    try { await startMic(); toast('The microphone is back.'); break; } catch { /* keep trying */ }
+  }
+  micRecovering = false;
 }
 
 function stopMic() {
@@ -406,6 +517,7 @@ function startRecognition() {
 }
 
 let busy = false;
+let startedAt = 0;
 async function toggleListening() {
   if (busy) return;
   busy = true;
@@ -419,7 +531,9 @@ async function toggleListening() {
       const engine = $('#engine').value;
       try { localStorage.setItem('engine', engine); } catch { /* ignore */ }
       if (engine === 'deepgram' && !cfg.hasDeepgram) { toast('Add your Deepgram key in Settings first (or try the Demo engine).', 'error'); return; }
+      startedAt = Date.now();
       if (engine !== 'demo') await startMic();
+      startedAt = Date.now();
       conn.send({ type: 'start', engine });
       status = { ...status, running: true, engine };
       if (engine === 'browser') startRecognition();
@@ -433,13 +547,7 @@ async function toggleListening() {
 }
 $('#go').onclick = toggleListening;
 
-setInterval(() => {
-  const w = $('#mic-warn');
-  if (status.running && mic && status.engine !== 'demo' && Date.now() - lastSound > 6000) {
-    w.hidden = false;
-    w.textContent = 'No sound from the microphone. Check that it is plugged in, not muted, and selected above.';
-  } else w.hidden = true;
-}, 1500);
+
 
 /* Keyboard shortcuts (ignored while typing) */
 addEventListener('keydown', (e) => {
@@ -503,6 +611,9 @@ function renderConfig() {
   $('#badge-an').textContent = cfg.hasAnthropic ? 'Key saved ✓' : 'Not set (demo mode)';
   $('#badge-an').classList.toggle('ok', cfg.hasAnthropic);
   $('#model').value = cfg.model;
+  $('#setup').hidden = cfg.hasDeepgram && cfg.hasAnthropic;
+  $('#step-dg').classList.toggle('done', cfg.hasDeepgram);
+  $('#step-an').classList.toggle('done', cfg.hasAnthropic);
   let saved = null;
   try { saved = localStorage.getItem('engine'); } catch { /* ignore */ }
   const eng = $('#engine');
@@ -519,20 +630,48 @@ async function loadState() {
 }
 loadState().catch((e) => toast(e.message, 'error'));
 
-$('#save-keys').onclick = async () => {
+async function saveKeys() {
+  const r = await api('PUT', '/config', { deepgramKey: $('#key-dg').value, anthropicKey: $('#key-an').value, model: $('#model').value });
+  cfg = r.config; net = r.net;
+  const hadKeys = $('#key-dg').value || $('#key-an').value;
+  $('#key-dg').value = ''; $('#key-an').value = '';
+  renderConfig(); renderNet();
+  return hadKeys;
+}
+
+function showTest(id, ok, text) {
+  const el = $(id);
+  el.textContent = text;
+  el.classList.toggle('ok', ok);
+  el.classList.toggle('bad', !ok);
+}
+
+async function testKey(kind) {
+  const out = kind === 'dg' ? '#dg-result' : '#test-result';
+  showTest(out, true, 'Testing…');
   try {
-    const r = await api('PUT', '/config', { deepgramKey: $('#key-dg').value, anthropicKey: $('#key-an').value, model: $('#model').value });
-    cfg = r.config; net = r.net;
-    $('#key-dg').value = ''; $('#key-an').value = '';
-    renderConfig(); renderNet();
-    toast('Saved.');
-  } catch (e) { toast(e.message, 'error'); }
-};
-$('#test-an').onclick = async () => {
-  $('#test-result').textContent = 'Testing…';
-  await $('#save-keys').onclick();
-  const r = await api('POST', '/config/test/anthropic');
-  $('#test-result').textContent = r.ok ? `Works: "Good evening" → "${r.sample}"` : `Failed: ${r.error}`;
+    await saveKeys();
+    const r = await api('POST', `/config/test/${kind === 'dg' ? 'deepgram' : 'anthropic'}`);
+    if (r.ok) showTest(out, true, kind === 'dg' ? 'The key works ✓' : `The key works ✓  "Good evening" → "${r.sample}"`);
+    else showTest(out, false, r.error);
+  } catch (e) { showTest(out, false, e.message); }
+}
+$$('.save-keys').forEach((b) => { b.onclick = async () => { try { await saveKeys(); toast('Saved.'); } catch (e) { toast(e.message, 'error'); } }; });
+$('#test-dg').onclick = () => testKey('dg');
+$('#test-an').onclick = () => testKey('an');
+$('#model').onchange = () => saveKeys().catch(() => {});
+$$('[data-goto]').forEach((b) => { b.onclick = () => $(`#nav button[data-tab="${b.dataset.goto}"]`).click(); });
+$('#try-demo').onclick = () => { $('#engine').value = 'demo'; if (!status.running) toggleListening(); };
+
+$('#copy-diag').onclick = async () => {
+  try {
+    const d = await api('GET', '/diagnostics');
+    d.desktop = desktop ? await desktop.info() : null;
+    d.browser = navigator.userAgent;
+    d.micActive = !!mic;
+    await navigator.clipboard.writeText(JSON.stringify(d, null, 2));
+    toast('Diagnostics copied. Paste them into your message.');
+  } catch (e) { toast(`Could not copy: ${e.message}`, 'error'); }
 };
 $('#host').onchange = async () => {
   const r = await api('PUT', '/config', { publicHost: $('#host').value });
@@ -720,3 +859,44 @@ function drawWave(t) {
   requestAnimationFrame(drawWave);
 }
 requestAnimationFrame(drawWave);
+
+/* ------------------------------------------------------------- microphone test */
+let micTestTimer = 0;
+$('#test-mic').onclick = async () => {
+  if (status.running) return toast('Stop listening first, then test the microphone.');
+  if (mic) { stopMic(); clearTimeout(micTestTimer); $('#test-mic').lastChild.textContent = 'Test'; renderPipe(); return; }
+  try {
+    lastSound = 0;
+    await startMic();
+    $('#test-mic').lastChild.textContent = 'Stop test';
+    toast('Say something. The bars should move.');
+    micTestTimer = setTimeout(() => { if (!status.running) { stopMic(); $('#test-mic').lastChild.textContent = 'Test'; renderPipe(); } }, 20000);
+  } catch (e) { toast(e.name === 'NotAllowedError' ? 'Microphone blocked. Allow it and try again.' : e.message, 'error'); }
+};
+
+/* ----------------------------------------------------------- desktop app extras */
+if (desktop) {
+  $('#opt-browser')?.remove(); // the free browser speech engine does not exist inside the desktop app
+  (async () => {
+    const info = await desktop.info();
+    $('#app-version').textContent = `Live Translate ${info.version} · desktop app`;
+    $('#open-data').hidden = false;
+    $('#open-data').onclick = () => desktop.openDataFolder();
+    $('#desktop-card').hidden = false;
+    const pick = $('#display-pick');
+    const list = await desktop.displays();
+    pick.replaceChildren(new Option('A window on this screen', 'window'));
+    list.forEach((d) => pick.append(new Option(`${d.label}${d.primary ? ' (main)' : ''} · ${d.width}×${d.height}`, String(d.id))));
+    const external = list.find((d) => !d.primary);
+    let saved = null;
+    try { saved = localStorage.getItem('displayPick'); } catch { /* ignore */ }
+    pick.value = [...pick.options].some((o) => o.value === saved) ? saved : external ? String(external.id) : 'window';
+    pick.onchange = () => { try { localStorage.setItem('displayPick', pick.value); } catch { /* ignore */ } updateHint(); };
+    const updateHint = () => { $('#display-hint').textContent = list.length > 1 ? 'A second screen is connected. Pick it to show the translation full screen there.' : 'Only one screen found. Connect a projector or second monitor and reopen the app to see it here.'; };
+    updateHint();
+    $('#open-display').onclick = () => desktop.openDisplay(pick.value);
+  })();
+  document.title = 'Live Translate';
+} else {
+  $('#app-version').textContent = 'Running in a browser';
+}

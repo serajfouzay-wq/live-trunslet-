@@ -26,7 +26,7 @@ Rules:
 - Use the previous sentences only for context, terminology and consistency. Never translate or repeat them.
 - Keep names, brands and numbers correct. Follow the glossary exactly when a term appears.
 - If the text is already in the target language, return it unchanged.
-- The text is a fragment of live speech and may be imperfect; translate it as it is.`;
+- The text is a fragment of live speech and may be imperfect (it may stop mid-sentence); translate it as it is.`;
 
 function buildUser({ text, from, to, history, glossary, context }) {
   const parts = [];
@@ -40,43 +40,84 @@ function buildUser({ text, from, to, history, glossary, context }) {
   return parts.join('\n\n');
 }
 
+/* At most a few requests at once, so a burst (8 languages x several sentences) can't trip rate limits. */
+const MAX_PARALLEL = 10;
+let active = 0;
+const waiters = [];
+async function takeSlot(signal) {
+  if (active < MAX_PARALLEL) { active += 1; return; }
+  await new Promise((resolve, reject) => {
+    const w = () => resolve();
+    waiters.push(w);
+    signal?.addEventListener('abort', () => { const i = waiters.indexOf(w); if (i >= 0) { waiters.splice(i, 1); reject(Object.assign(new Error('aborted'), { name: 'AbortError' })); } }, { once: true });
+  });
+}
+function freeSlot() {
+  const next = waiters.shift();
+  if (next) next(); else active -= 1;
+}
+
+export class MissingKeyError extends Error {
+  constructor() { super('NO_KEY'); this.name = 'MissingKeyError'; }
+}
+
+/** A readable explanation for an error from the Claude API or the network. */
+export function explain(e) {
+  if (e?.name === 'MissingKeyError') return 'No Claude API key yet. Open Settings, paste your Anthropic key, and press Save.';
+  const status = e?.status;
+  if (status === 401 || status === 403) return 'Claude rejected the API key. Check it in Settings.';
+  if (status === 404) return 'The selected Claude model was not found. Pick another model in Settings.';
+  if (status === 429) return 'Claude is rate-limiting requests (too many at once). It will catch up in a moment.';
+  if (status === 529 || status >= 500) return 'Claude is temporarily overloaded. Retrying…';
+  if (e?.name === 'APIConnectionError' || e?.name === 'APIConnectionTimeoutError' || /ENOTFOUND|ECONN|ETIMEDOUT|fetch failed|timed out/i.test(e?.message || '')) return "Can't reach Claude. Check this computer's internet connection.";
+  return `Translation problem: ${e?.message || e}`;
+}
+
+/** Errors where trying again cannot help. */
+export const isFatal = (e) => e?.name === 'MissingKeyError' || [400, 401, 403, 404].includes(e?.status);
+
 /**
  * Translate `text` into `to`. Streams partial output via onDelta(fullTextSoFar)
- * and resolves with the final string.
+ * and resolves with the final string. Pass `signal` to cancel (used by draft mode).
  */
 export async function translate(opts) {
-  const { text, from, to, onDelta } = opts;
+  const { text, from, to, onDelta, signal } = opts;
   if (from === to) return text;
 
   const c = getClient();
   if (!c) return demoTranslate(opts);
 
-  const isHaiku = /haiku/.test(config.model);
-  const params = {
-    model: config.model,
-    max_tokens: Math.min(4000, Math.max(300, text.length * 6)),
-    system: SYSTEM,
-    messages: [{ role: 'user', content: buildUser(opts) }],
-    // Newer models think by default; keep interpretation snappy.
-    ...(isHaiku ? {} : { output_config: { effort: 'low' } }),
-  };
-
-  let acc = '';
-  const stream = c.messages.stream(params);
-  stream.on('text', (delta) => {
-    acc += delta;
-    onDelta?.(acc);
-  });
-  const final = await stream.finalMessage();
-  const out = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-  return out || acc.trim();
+  await takeSlot(signal);
+  try {
+    const isHaiku = /haiku/.test(config.model);
+    const params = {
+      model: config.model,
+      max_tokens: Math.min(4000, Math.max(300, text.length * 6)),
+      system: SYSTEM,
+      messages: [{ role: 'user', content: buildUser(opts) }],
+      // Newer models think by default; keep interpretation snappy.
+      ...(isHaiku ? {} : { output_config: { effort: 'low' } }),
+    };
+    let acc = '';
+    const stream = c.messages.stream(params, { signal, timeout: 25000, maxRetries: 1 });
+    stream.on('text', (delta) => {
+      acc += delta;
+      onDelta?.(acc);
+    });
+    const final = await stream.finalMessage();
+    const out = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    return out || acc.trim();
+  } finally {
+    freeSlot();
+  }
 }
 
-// Without an Anthropic key the app still runs: the built-in demo script has
-// ready translations, anything else is echoed with a language tag.
+// Without an Anthropic key only the built-in demo talk can be translated (it has ready translations).
+// Anything else fails clearly instead of pretending to translate.
 async function demoTranslate({ text, to, onDelta }) {
   const hit = DEMO_TRANSLATIONS.get(text);
-  const out = hit?.[to] ?? `[${to}] ${text}`;
+  if (!hit?.[to]) throw new MissingKeyError();
+  const out = hit[to];
   let shown = '';
   for (const ch of Array.from(out)) {
     shown += ch;
@@ -88,12 +129,13 @@ async function demoTranslate({ text, to, onDelta }) {
 
 export async function testAnthropic() {
   const c = getClient();
-  if (!c) throw new Error('No Anthropic API key set');
-  const r = await c.messages.create({
+  if (!c) throw new MissingKeyError();
+  const stream = c.messages.stream({
     model: config.model,
     max_tokens: 40,
     messages: [{ role: 'user', content: 'Translate "Good evening" into French. Output only the translation.' }],
     ...(/haiku/.test(config.model) ? {} : { output_config: { effort: 'low' } }),
-  });
+  }, { timeout: 20000, maxRetries: 0 });
+  const r = await stream.finalMessage();
   return r.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
 }
