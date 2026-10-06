@@ -279,3 +279,43 @@ select.mini { width: auto; padding: 4px 30px 4px 10px; font-size: 12px; border-r
 .fs .tr.err span { color: #ff9c9c; }
 @media (max-width: 1100px) { .pipe { flex-wrap: wrap; } .pipe .arrow { display: none; } .pipe .node { flex: 1 1 45%; } }
 .link { margin-top: 12px; padding: 9px 12px; border-radius: 10px; background: rgba(3, 6, 14, 0.5); border: 1px solid var(--line); text-align: center; word-break: normal; overflow-wrap: anywhere; user-select: all; }
+
+/* ---------------------------------------------------------- quick looks + wizard */
+.looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.looks button { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font-weight: 600; font-size: 13px; cursor: pointer; transition: transform 0.12s, border-color 0.15s; }
+.looks button:hover { transform: translateY(-2px); border-color: var(--line2); }
+.looks button i { display: block; height: 54px; border-radius: 9px; border: 1px solid var(--line); position: relative; overflow: hidden; }
+.looks button i::after { content: ''; position: absolute; inset: 9px 12px; border-radius: 5px; background: rgba(255, 255, 255, 0.16); box-shadow: 0 14px 0 -2px rgba(255, 255, 255, 0.12); }
+.looks button small { color: var(--muted); font-weight: 400; font-size: 11.5px; margin-top: -4px; }
+
+.modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: rgba(3, 6, 14, 0.72); backdrop-filter: blur(10px); animation: fadein 0.2s; }
+.modal[hidden] { display: none; }
+.wz { position: relative; width: min(640px, 100%); max-height: calc(100vh - 48px); overflow: auto; padding: 30px 32px 22px; border-radius: 26px; background: linear-gradient(180deg, #131c33, #0b1224); border: 1px solid var(--line2); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6); }
+.wz-x { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 0; background: var(--surface); color: var(--muted); cursor: pointer; }
+.wz-x:hover { color: #fff; background: var(--surface2); }
+.wz-dots { display: flex; gap: 7px; margin-bottom: 22px; }
+.wz-dots i { height: 5px; flex: 1; max-width: 46px; border-radius: 5px; background: rgba(255, 255, 255, 0.14); transition: background 0.2s; }
+.wz-dots i.on { background: var(--grad); }
+.wz-step[hidden] { display: none; }
+.wz h2 { margin: 0 0 12px; font-size: 25px; letter-spacing: -0.01em; }
+.wz .lead { color: #c3d0ee; font-size: 15px; line-height: 1.6; margin: 0 0 18px; }
+.wz-badge { display: inline-block; margin-bottom: 10px; padding: 3px 12px; border-radius: 99px; background: rgba(91, 140, 255, 0.16); color: #9bbcff; font-size: 12px; font-weight: 650; }
+.wz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.wz-card { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.wz-card b { font-size: 16px; }
+.wz-card small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.wz-card em { color: var(--text); font-style: normal; font-weight: 650; }
+.wz-ico { font-size: 28px; line-height: 1; margin-bottom: 4px; }
+.wz-list { margin: 0 0 14px; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 12px; color: #c9d5ef; line-height: 1.55; }
+.wz-list li::marker { color: var(--accent); font-weight: 700; }
+.wz-list .btn { margin-top: 8px; }
+.wz-paste { display: flex; gap: 10px; }
+.wz-res { min-height: 22px; margin: 10px 0 0; font-size: 13.5px; }
+.wz-res.ok { color: var(--good); }
+.wz-res.bad { color: #ff9c9c; }
+.wz-mic { display: flex; align-items: center; gap: 16px; }
+.wz-mic canvas { flex: 1; min-width: 0; width: 100%; height: 56px; }
+.wz-done { width: 74px; height: 74px; display: grid; place-items: center; margin: 6px 0 18px; border-radius: 50%; font-size: 38px; font-weight: 800; color: #04140d; background: var(--good); box-shadow: 0 0 0 10px rgba(62, 207, 142, 0.16); }
+.wz-foot { display: flex; align-items: center; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+.spacer { flex: 1; }
+@media (max-width: 600px) { .wz-two { grid-template-columns: 1fr; } .wz { padding: 24px 20px 18px; } .wz-paste { flex-direction: column; } }

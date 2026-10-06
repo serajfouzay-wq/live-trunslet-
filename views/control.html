@@ -46,8 +46,8 @@
           <div class="card setup" id="setup" hidden>
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>Let's get you set up</h3><p>Two keys make it hear and translate. It takes about two minutes, once.</p></div></div>
             <div class="steps">
-              <div class="step" id="step-dg"><span class="num">1</span><div><b>Speech key · Deepgram</b><small>Turns your voice into text</small></div><button class="btn" data-goto="settings">Add key</button></div>
-              <div class="step" id="step-an"><span class="num">2</span><div><b>Translation key · Claude</b><small>Translates the text into every language</small></div><button class="btn" data-goto="settings">Add key</button></div>
+              <div class="step" id="step-dg"><span class="num">1</span><div><b>Speech key · Deepgram</b><small>The "ears": turns your voice into text</small></div><button class="btn primary" data-wizard="1">Show me how</button></div>
+              <div class="step" id="step-an"><span class="num">2</span><div><b>Translation key · Claude</b><small>The "translator": turns the text into the other languages</small></div><button class="btn primary" data-wizard="2">Show me how</button></div>
               <div class="step" id="step-demo"><span class="num">3</span><div><b>Just looking around?</b><small>The demo plays a short talk in all languages, no keys needed</small></div><button class="btn primary" id="try-demo"><svg class="ic"><use href="/assets/icons.svg#i-play"/></svg>Try the demo</button></div>
             </div>
           </div>
@@ -90,6 +90,17 @@
           </div>
 
           <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-megaphone"/></svg></span><div><h3>Announcement</h3><p>A message for the whole room. It is translated into every language and shown on the big screen and on all phones.</p></div></div>
+            <div class="chips" id="ann-presets"></div>
+            <form id="ann-form" class="type" style="margin:12px 0 0">
+              <input id="ann-text" maxlength="300" placeholder="e.g. Coffee break, we continue at 15:30" autocomplete="off">
+              <select id="ann-sec" class="mini" style="width:auto"><option value="20">20 seconds</option><option value="45" selected>45 seconds</option><option value="120">2 minutes</option><option value="0">Until I hide it</option></select>
+              <button class="btn primary"><svg class="ic"><use href="/assets/icons.svg#i-megaphone"/></svg>Show</button>
+              <button class="btn" type="button" id="ann-hide">Hide</button>
+            </form>
+          </div>
+
+          <div class="card">
             <div class="card-h">
               <span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-monitor"/></svg></span>
               <div><h3>On the screen</h3><p>What the audience is reading right now. Click a sentence to correct it.</p></div>
@@ -109,6 +120,10 @@
 
         <!-- ============================ DESIGN ============================ -->
         <section class="tab" id="tab-design">
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>Quick looks</h3><p>One click sets the colours and layout. Fine-tune anything below afterwards.</p></div></div>
+            <div class="looks" id="looks"></div>
+          </div>
           <div class="card">
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>Event</h3><p>The title people see at the top of every screen.</p></div></div>
             <label class="f">Title <input data-set="title" maxlength="140" placeholder="e.g. Global Summit 2026"></label>
@@ -238,12 +253,12 @@
         <!-- ============================ SETTINGS ========================== -->
         <section class="tab" id="tab-settings">
           <div class="card">
-            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg></span><div><h3>Speech recognition · Deepgram</h3><p>Streams your microphone for fast, accurate text. Get a key at deepgram.com.</p></div><span class="badge" id="badge-dg"></span></div>
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg></span><div><h3>Speech recognition · Deepgram</h3><p>Streams your microphone for fast, accurate text. Get a key at deepgram.com.</p></div><button class="btn ghost" data-wizard="1" type="button"><svg class="ic"><use href="/assets/icons.svg#i-help"/></svg>How to get it</button><span class="badge" id="badge-dg"></span></div>
             <input id="key-dg" type="password" placeholder="Paste Deepgram API key" autocomplete="off">
             <div class="row gap" style="margin-top:12px"><button class="btn primary save-keys">Save</button><button class="btn" id="test-dg">Test key</button><span class="hint test-result" id="dg-result"></span></div>
           </div>
           <div class="card">
-            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg></span><div><h3>Translation · Claude</h3><p>Translates each sentence with the context of what was said before. Get a key at console.anthropic.com.</p></div><span class="badge" id="badge-an"></span></div>
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg></span><div><h3>Translation · Claude</h3><p>Translates each sentence with the context of what was said before. Get a key at console.anthropic.com.</p></div><button class="btn ghost" data-wizard="2" type="button"><svg class="ic"><use href="/assets/icons.svg#i-help"/></svg>How to get it</button><span class="badge" id="badge-an"></span></div>
             <input id="key-an" type="password" placeholder="Paste Anthropic API key" autocomplete="off">
             <label class="f" style="margin-top:14px">Model
               <select id="model">
@@ -297,6 +312,70 @@
         </div>
       </aside>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="wizard" hidden>
+  <div class="wz" role="dialog" aria-modal="true" aria-labelledby="wz-title">
+    <button class="wz-x" id="wz-close" aria-label="Close"><svg class="ic"><use href="/assets/icons.svg#i-x"/></svg></button>
+    <div class="wz-dots" id="wz-dots"></div>
+
+    <section class="wz-step" data-step="0">
+      <h2 id="wz-title">Let's set up Live Translate</h2>
+      <p class="lead">Two online services do the hard work. Each one gives you a <b>key</b>: a long password that lets this app use it. You copy the key from the service's website and paste it here. You only do this once.</p>
+      <div class="wz-two">
+        <div class="wz-card"><span class="wz-ico">👂</span><b>Deepgram</b><small>The <em>ears</em>. Turns the speaker's voice into text, live.</small></div>
+        <div class="wz-card"><span class="wz-ico">🌍</span><b>Claude</b><small>The <em>translator</em>. Turns that text into every other language.</small></div>
+      </div>
+      <p class="hint">You pay each service directly, only for what you use. New Deepgram accounts normally start with free credit. Your keys stay on this computer.</p>
+    </section>
+
+    <section class="wz-step" data-step="1" hidden>
+      <div class="wz-badge">Step 1 of 3 · the ears</div>
+      <h2>Get your Deepgram key</h2>
+      <ol class="wz-list">
+        <li>Click the button to open Deepgram's website.<br><button class="btn primary" data-open="https://console.deepgram.com/signup"><svg class="ic"><use href="/assets/icons.svg#i-external"/></svg>Open Deepgram</button></li>
+        <li>Create a free account (signing in with Google is fine).</li>
+        <li>Open <b>API Keys</b>, press <b>Create a New API Key</b>, give it any name, and <b>copy</b> the key it shows.</li>
+        <li>Come back here and paste it:</li>
+      </ol>
+      <div class="wz-paste"><input id="wz-dg" type="password" placeholder="Paste the Deepgram key here" autocomplete="off"><button class="btn primary" data-wz-save="dg">Save and test</button></div>
+      <p class="wz-res" id="wz-dg-res"></p>
+    </section>
+
+    <section class="wz-step" data-step="2" hidden>
+      <div class="wz-badge">Step 2 of 3 · the translator</div>
+      <h2>Get your Claude key</h2>
+      <ol class="wz-list">
+        <li>Click the button to open the Claude developer website.<br><button class="btn primary" data-open="https://console.anthropic.com/settings/keys"><svg class="ic"><use href="/assets/icons.svg#i-external"/></svg>Open Claude console</button></li>
+        <li>Sign in or create an account. Under <b>Billing</b>, add a few dollars of credit (you only pay for what the translations use).</li>
+        <li>Open <b>API Keys</b>, press <b>Create Key</b>, and <b>copy</b> the key.</li>
+        <li>Come back here and paste it:</li>
+      </ol>
+      <div class="wz-paste"><input id="wz-an" type="password" placeholder="Paste the Claude key here" autocomplete="off"><button class="btn primary" data-wz-save="an">Save and test</button></div>
+      <p class="wz-res" id="wz-an-res"></p>
+    </section>
+
+    <section class="wz-step" data-step="3" hidden>
+      <div class="wz-badge">Step 3 of 3 · the microphone</div>
+      <h2>Check your microphone</h2>
+      <p class="lead">Press the button and say a few words. If the app hears you, the bars under it move and the Microphone box turns green.</p>
+      <div class="wz-mic"><button class="btn primary" id="wz-mic"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg>Test microphone</button><canvas id="wz-wave" height="56"></canvas></div>
+      <p class="hint">Nothing moves? Choose the right microphone in the <b>Microphone</b> list on the Live page, and check it is not muted.</p>
+    </section>
+
+    <section class="wz-step" data-step="4" hidden>
+      <div class="wz-done">✓</div>
+      <h2>You're ready</h2>
+      <p class="lead">Choose the speaker's language, press <b>Start listening</b>, then <b>Open big screen</b>. Show the QR code so the audience can read on their phones.</p>
+    </section>
+
+    <footer class="wz-foot">
+      <button class="btn ghost" id="wz-back">Back</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="wz-skip">Skip this step</button>
+      <button class="btn primary" id="wz-next">Next</button>
+    </footer>
   </div>
 </div>
 

@@ -38,6 +38,7 @@ export class Hub {
     this.demoAbort = null;
     this.joinUrl = '';
     this.pipe = freshPipe();
+    this.announcement = null;
     this.draft = { lastAt: 0, lastLen: 0, ctl: new Map(), text: {}, timers: new Map() };
     this.newSession();
   }
@@ -104,6 +105,7 @@ export class Hub {
       langs: LANGUAGES,
       joinUrl: this.joinUrl,
       live: this.running,
+      announce: this.announceView(client),
       session: this.session,
       status: control ? this.statusMsg() : undefined,
     });
@@ -225,6 +227,45 @@ export class Hub {
   setJoinUrl(url) {
     this.joinUrl = url;
     this.broadcast({ type: 'info', joinUrl: url });
+  }
+
+  /* ----------------------------------------------------------- announcements */
+  // A message for the whole room ("Coffee break, back at 15:30"). It is translated into every language in use
+  // and shown as a banner on the big screen and on phones until it expires or the operator hides it.
+
+  announceView(client) {
+    const a = this.announcement;
+    if (!a || a.until < Date.now()) return null;
+    const texts = {};
+    for (const [l, t] of Object.entries(a.texts)) if (l === a.src || this.wants(client, l)) texts[l] = t;
+    return { id: a.id, texts, until: a.until, src: a.src };
+  }
+
+  async announce(text, seconds = 30) {
+    text = String(text || '').trim().slice(0, 300);
+    if (!text) return;
+    const id = crypto.randomUUID().slice(0, 6);
+    const src = detectLang(text, this.settings.sourceLang === 'auto' ? 'en' : this.settings.sourceLang);
+    const until = seconds > 0 ? Date.now() + Math.min(seconds, 3600) * 1000 : Date.now() + 12 * 3600 * 1000;
+    const a = { id, src, until, texts: { [src]: text } };
+    this.announcement = a;
+    const send = () => {
+      for (const c of this.clients) this.send(c, { type: 'announce', announce: this.announceView(c) });
+    };
+    send(); // the original appears at once; translations join as they arrive
+    const langs = this.wantedLangs().filter((l) => l !== src);
+    await Promise.all(langs.map(async (lang) => {
+      try { a.texts[lang] = await translate({ text, from: src, to: lang, glossary: this.settings.glossary, context: this.settings.context }); } catch (e) {
+        log('warn', `announcement translation to ${lang} failed: ${e.message}`);
+        if (e?.name === 'MissingKeyError') this.notify('error', explain(e));
+      }
+    }));
+    if (this.announcement === a) send();
+  }
+
+  clearAnnouncement() {
+    this.announcement = null;
+    this.broadcast({ type: 'announce', announce: null });
   }
 
   /* ---------------------------------------------------------------- settings */

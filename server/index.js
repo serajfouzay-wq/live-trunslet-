@@ -156,6 +156,8 @@ function controlMessage(client, data, isBinary) {
     case 'newSession': hub.newSession(m.name); break;
     case 'edit': hub.editSegment(m.id, m.text); break;
     case 'retry': hub.retrySegment(m.id); break;
+    case 'announce': hub.announce(m.text, Number(m.seconds) || 30); break;
+    case 'announceClear': hub.clearAnnouncement(); break;
     default: break;
   }
 }

@@ -57,6 +57,7 @@ function draw() {
   live.classList.toggle('on', !!store.live);
   live.querySelector('span').textContent = store.live ? 'Live' : 'Waiting';
   drawChips();
+  drawNotice();
   drawFeed();
   drawLive();
 }
@@ -84,6 +85,34 @@ function drawChips() {
   edit.innerHTML = `${icon('plus')}<span>Languages</span>`;
   edit.onclick = () => openPicker(false);
   box.append(edit);
+}
+
+/* ------------------------------------------------------------- announcements */
+let noticeTimer = 0;
+function drawNotice() {
+  const el = $('#notice');
+  const a = store.announce;
+  const live = a && a.until > Date.now() && langs.length;
+  el.hidden = !live;
+  clearTimeout(noticeTimer);
+  if (!live) return;
+  noticeTimer = setTimeout(render, Math.max(100, a.until - Date.now() + 50));
+  const sig = langs.map((l) => `${l}:${a.texts[l] || ''}`).join('|');
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  el.replaceChildren();
+  const label = document.createElement('div');
+  label.className = 'n-label';
+  label.innerHTML = `${icon('sparkles')}<span>Announcement</span>`;
+  el.append(label);
+  const shown = langs.filter((l) => a.texts[l]);
+  for (const l of (shown.length ? shown : [a.src])) {
+    const p = document.createElement('p');
+    p.dir = store.langs[l].dir;
+    p.style.setProperty('--lc', store.langs[l].color);
+    p.textContent = a.texts[l] || a.texts[a.src];
+    el.append(p);
+  }
 }
 
 /* ----------------------------------------------------------------- the feed */

@@ -5,7 +5,7 @@ Speak in one language; the room reads it in many. A Windows desktop app for live
 - **Big screen**: 1–8 languages at the same time (Arabic, English, Chinese, French, German, Spanish, Turkish, Italian), with your event title, logo and background picture. It opens full screen on your projector or second monitor.
 - **Phones**: the audience scans a QR code, picks up to 4 languages of their own (all shown together, the first one biggest), and reads along. They can also listen through earphones.
 - **Always know it's working**: a live strip shows *Microphone → Speech → Text → Translation* and tells you in plain words where something stops.
-- **Made for events**: glossary for names and terms, saved events, standby screen, click-to-correct, faster mode, transcripts as PDF / text / subtitles.
+- **Made for events**: announcements to the whole room, one-click looks, glossary for names and terms, saved events, standby screen, click-to-correct, faster mode, transcripts as PDF / text / subtitles.
 
 ## Install (Windows)
 
@@ -18,6 +18,10 @@ No installing wanted? **`LiveTranslate-Portable-….exe`** runs by double-clicki
 > If Windows SmartScreen says *"Windows protected your PC"*, click **More info → Run anyway**. This appears because the app is not code-signed, which costs money. If Windows Firewall asks, click **Allow** (Private networks) so phones can connect.
 
 ## First run (2 minutes)
+
+The app opens a **setup guide** the first time and walks you through every step below. You can reopen it any time with *Show me how* / *How to get it*.
+
+**What are "keys"?** Two online services do the hard work: **Deepgram** is the *ears* (voice → text) and **Claude** is the *translator* (text → other languages). A key is a long password you copy from each service's website and paste into the app, once. You pay each service directly for what you use.
 
 1. **Settings** → paste your two keys and press **Test key** on each:
    - **Deepgram** (speech to text): <https://deepgram.com>

@@ -265,3 +265,20 @@ test('without a Claude key only the demo talk is translated, and the error is cl
   assert.match(explain({ status: 401 }), /rejected/);
   assert.match(explain({ status: 429 }), /rate/);
 });
+
+test('announcements are translated and reach screens and phones in their languages', async () => {
+  await api('PATCH', '/settings', { screenLangs: ['en', 'ar'], sourceLang: 'en' });
+  const display = client('display');
+  const phone = client('phone', 'de');
+  const ctl = client('control');
+  await Promise.all([display.ready, phone.ready, ctl.ready]);
+  ctl.send({ type: 'announce', text: 'Coffee break, back at 15:30', seconds: 30 });
+  const d = await display.until((m) => m.type === 'announce' && m.announce?.texts.ar);
+  assert.equal(d.announce.texts.ar, '[Arabic] Coffee break, back at 15:30');
+  assert.ok(!d.announce.texts.de, 'the screen only gets its own languages');
+  const p = await phone.until((m) => m.type === 'announce' && m.announce?.texts.de);
+  assert.equal(p.announce.texts.de, '[German] Coffee break, back at 15:30');
+  ctl.send({ type: 'announceClear' });
+  await display.until((m) => m.type === 'announce' && m.announce === null);
+  for (const c of [display, phone, ctl]) c.ws.close();
+});

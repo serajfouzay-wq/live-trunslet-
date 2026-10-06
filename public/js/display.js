@@ -30,6 +30,7 @@ function render() {
   renderLanes(s);
   renderOriginal(s);
   renderQR(s);
+  renderAnnounce(s);
 }
 
 function buildLanes(s) {
@@ -161,4 +162,34 @@ if (!preview) {
   const hint = $('.hint');
   setTimeout(() => hint.classList.add('on'), 800);
   setTimeout(() => hint.classList.remove('on'), 5500);
+}
+
+/* Announcement banner: a message for the whole room, in every language on screen. */
+let announceTimer = 0;
+function renderAnnounce(s) {
+  const el = $('.announce');
+  const a = store.announce;
+  const live = a && a.until > Date.now();
+  el.hidden = !live;
+  clearTimeout(announceTimer);
+  if (!live) return;
+  announceTimer = setTimeout(schedule, Math.max(100, a.until - Date.now() + 50));
+  const codes = [...s.screenLangs.filter((c) => a.texts[c]), ...(s.screenLangs.includes(a.src) ? [] : [a.src])];
+  const box = el.querySelector('.a-lines');
+  const sig = codes.map((c) => `${c}:${a.texts[c]}`).join('|');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.replaceChildren();
+  for (const c of codes) {
+    const L = store.langs[c];
+    const row = document.createElement('div');
+    row.className = 'a-line';
+    row.dir = L.dir;
+    row.style.setProperty('--lc', L.color);
+    row.innerHTML = '<span class="a-tag"></span><p></p>';
+    row.querySelector('.a-tag').textContent = L.native;
+    row.querySelector('p').textContent = a.texts[c];
+    box.append(row);
+  }
+  el.style.setProperty('--n', codes.length);
 }

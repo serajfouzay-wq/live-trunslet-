@@ -30,6 +30,7 @@ export class Store {
     this.langs = {};
     this.joinUrl = '';
     this.draft = {};
+    this.announce = null;
   }
   #add(seg) {
     const old = this.byId.get(seg.id);
@@ -40,7 +41,7 @@ export class Store {
   handle(m) {
     switch (m.type) {
       case 'hello':
-        this.settings = m.settings; this.langs = m.langs; this.joinUrl = m.joinUrl; this.partial = m.partial; this.live = !!m.live;
+        this.settings = m.settings; this.langs = m.langs; this.joinUrl = m.joinUrl; this.partial = m.partial; this.live = !!m.live; this.announce = m.announce || null;
         this.segments = []; this.byId.clear();
         m.segments.forEach((s) => this.#add(s));
         break;
@@ -57,6 +58,7 @@ export class Store {
       case 'clear': this.segments = []; this.byId.clear(); this.partial = null; this.draft = {}; break;
       case 'info': this.joinUrl = m.joinUrl; break;
       case 'live': this.live = m.live; break;
+      case 'announce': this.announce = m.announce; break;
       default: break;
     }
     return m.type;

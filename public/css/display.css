@@ -89,3 +89,15 @@ body[data-qr='top-right'] .live-badge { right: calc(var(--qr) + 5.5vw); }
 .blank .hdr .logo { animation: float 6s ease-in-out infinite; }
 @keyframes float { 50% { transform: translateY(-1.4vh); } }
 .blank .hdr h1 { background: linear-gradient(90deg, var(--text), color-mix(in srgb, var(--accent) 70%, var(--text))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Announcement */
+.announce { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; padding: 6vh 6vw; background: rgba(var(--tint), 0.6); backdrop-filter: blur(10px); animation: fade 0.35s; }
+.announce[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; } }
+.a-card { width: min(92vw, 160vh); max-height: 88vh; overflow: hidden; padding: 4vh 4vw; border-radius: 3vh; background: linear-gradient(180deg, color-mix(in srgb, var(--bg2) 70%, #000), color-mix(in srgb, var(--bg1) 85%, #000)); border: 1px solid var(--panel-line); box-shadow: 0 4vh 12vh rgba(0, 0, 0, 0.5); animation: pop 0.45s cubic-bezier(0.2, 0.9, 0.2, 1.1); }
+@keyframes pop { from { opacity: 0; transform: translateY(3vh) scale(0.96); } }
+.a-label { font-size: 1.8vh; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); margin-bottom: 2.2vh; }
+.a-lines { display: flex; flex-direction: column; gap: 2.4vh; }
+.a-line { padding-inline-start: 2vw; border-inline-start: 0.7vh solid var(--lc); }
+.a-line p { margin: 0; font-size: calc(min(7.2vh, 5vw) / var(--n, 1) + 1.6vh); line-height: 1.25; font-weight: 600; text-wrap: balance; }
+.a-tag { display: block; margin-bottom: 0.6vh; font-size: 1.5vh; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lc); }

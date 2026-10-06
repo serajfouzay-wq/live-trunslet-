@@ -225,6 +225,7 @@ function renderSource() {
     b.onclick = () => patchSettings({ theme: k }, true);
     th.append(b);
   }
+  renderLooks();
   const lay = $('#layouts');
   lay.replaceChildren();
   for (const [k, [name, svg]] of Object.entries(LAYOUTS)) {
@@ -232,6 +233,31 @@ function renderSource() {
     b.innerHTML = `<svg viewBox="0 0 60 48">${svg}</svg>${name}`;
     b.onclick = () => patchSettings({ layout: k }, true);
     lay.append(b);
+  }
+}
+
+const LOOKS = [
+  { name: 'Conference', note: 'Calm and clear', set: { theme: 'midnight', layout: 'stack', dim: 45, uniformSize: true } },
+  { name: 'Cinema', note: 'Subtitles over a picture', set: { theme: 'contrast', layout: 'subtitles', dim: 20, uniformSize: true } },
+  { name: 'Gala', note: 'Gold, big first language', set: { theme: 'gold', layout: 'focus', dim: 50 } },
+  { name: 'Fresh', note: 'Green, side by side', set: { theme: 'emerald', layout: 'columns', dim: 40 } },
+  { name: 'Neon night', note: 'Bold and modern', set: { theme: 'neon', layout: 'grid', dim: 45 } },
+  { name: 'Sunset', note: 'Warm tones', set: { theme: 'sunset', layout: 'stack', dim: 40 } },
+  { name: 'Clean light', note: 'Bright rooms', set: { theme: 'light', layout: 'stack', dim: 30 } },
+];
+
+function renderLooks() {
+  const box = $('#looks');
+  box.replaceChildren();
+  for (const l of LOOKS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = '<i></i><span></span><small></small>';
+    b.querySelector('i').style.background = THEME_BG[l.set.theme];
+    b.querySelector('span').textContent = l.name;
+    b.querySelector('small').textContent = l.note;
+    b.onclick = () => { patchSettings(l.set, true); toast(`Look: ${l.name}`); };
+    box.append(b);
   }
 }
 
@@ -900,3 +926,112 @@ if (desktop) {
 } else {
   $('#app-version').textContent = 'Running in a browser';
 }
+
+/* ------------------------------------------------------------- announcements */
+const PRESETS = ['Coffee break', 'We start in 5 minutes', 'Please silence your phones', 'Lunch break', 'Thank you for coming!'];
+for (const t of PRESETS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = t;
+  b.onclick = () => { $('#ann-text').value = t; $('#ann-text').focus(); };
+  $('#ann-presets').append(b);
+}
+$('#ann-form').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('#ann-text').value.trim();
+  if (!text) return;
+  conn.send({ type: 'announce', text, seconds: Number($('#ann-sec').value) });
+  toast('Announcement is on the screens.');
+};
+$('#ann-hide').onclick = () => conn.send({ type: 'announceClear' });
+
+/* ----------------------------------------------------------------- setup guide */
+const wz = { step: 0, last: 4 };
+function openWizard(step = 0) {
+  wz.step = step;
+  $('#wizard').hidden = false;
+  try { localStorage.setItem('wizardSeen', '1'); } catch { /* ignore */ }
+  renderWizard();
+}
+function closeWizard() { $('#wizard').hidden = true; if (mic && !status.running) { stopMic(); } }
+
+function renderWizard() {
+  $$('.wz-step').forEach((el) => { el.hidden = Number(el.dataset.step) !== wz.step; });
+  $('#wz-dots').replaceChildren(...Array.from({ length: wz.last + 1 }, (_, i) => { const d = document.createElement('i'); d.className = i <= wz.step ? 'on' : ''; return d; }));
+  $('#wz-back').style.visibility = wz.step > 0 ? 'visible' : 'hidden';
+  const haveKey = (wz.step === 1 && cfg.hasDeepgram) || (wz.step === 2 && cfg.hasAnthropic);
+  $('#wz-skip').hidden = !(wz.step >= 1 && wz.step <= 3) || haveKey;
+  $('#wz-next').textContent = wz.step === 0 ? "Let's start" : wz.step === wz.last ? 'Finish' : 'Next';
+  $('#wz-next').disabled = (wz.step === 1 && !cfg.hasDeepgram) || (wz.step === 2 && !cfg.hasAnthropic);
+  if (wz.step === 1 || wz.step === 2) {
+    const kind = wz.step === 1 ? 'dg' : 'an';
+    const res = $(`#wz-${kind}-res`);
+    if ((kind === 'dg' ? cfg.hasDeepgram : cfg.hasAnthropic) && !res.textContent) showWz(res, true, '✓ A key is already saved. Paste a new one only if you want to replace it.');
+  }
+}
+function showWz(el, ok, text) { el.textContent = text; el.classList.toggle('ok', ok); el.classList.toggle('bad', !ok); }
+
+async function wzSave(kind) {
+  const input = $(`#wz-${kind}`);
+  const res = $(`#wz-${kind}-res`);
+  const value = input.value.trim();
+  if (!value) return showWz(res, false, 'Paste the key into the box first.');
+  showWz(res, true, 'Checking…');
+  try {
+    const r = await api('PUT', '/config', { [kind === 'dg' ? 'deepgramKey' : 'anthropicKey']: value });
+    cfg = r.config; input.value = ''; renderConfig();
+    const t = await api('POST', `/config/test/${kind === 'dg' ? 'deepgram' : 'anthropic'}`);
+    if (t.ok) { showWz(res, true, '✓ It works! The key is saved.'); renderWizard(); setTimeout(() => { if (!$('#wizard').hidden && wz.step === (kind === 'dg' ? 1 : 2)) { wz.step += 1; renderWizard(); } }, 1100); }
+    else showWz(res, false, t.error);
+  } catch (e) { showWz(res, false, e.message); }
+}
+
+$('#wz-next').onclick = () => { if (wz.step >= wz.last) closeWizard(); else { wz.step += 1; renderWizard(); } };
+$('#wz-back').onclick = () => { wz.step = Math.max(0, wz.step - 1); renderWizard(); };
+$('#wz-skip').onclick = () => { wz.step += 1; renderWizard(); };
+$('#wz-close').onclick = closeWizard;
+$('#wizard').addEventListener('click', (e) => { if (e.target.id === 'wizard') closeWizard(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#wizard').hidden) closeWizard(); });
+$('#wz-mic').onclick = () => $('#test-mic').click();
+document.addEventListener('click', (e) => {
+  const w = e.target.closest('[data-wizard]');
+  if (w) openWizard(Number(w.dataset.wizard));
+  const o = e.target.closest('[data-open]');
+  if (o) window.open(o.dataset.open, '_blank', 'noopener');
+  const sv = e.target.closest('[data-wz-save]');
+  if (sv) wzSave(sv.dataset.wzSave);
+});
+for (const id of ['wz-dg', 'wz-an']) $(`#${id}`).addEventListener('keydown', (e) => { if (e.key === 'Enter') wzSave(id.slice(3)); });
+
+// First time with no keys at all: guide the person straight away.
+function maybeAutoGuide() {
+  let seen = '';
+  try { seen = localStorage.getItem('wizardSeen') || ''; } catch { /* ignore */ }
+  if (!seen && !cfg.hasDeepgram && !cfg.hasAnthropic) openWizard(0);
+}
+loadState().then(maybeAutoGuide).catch(() => {});
+
+/* small meter inside the guide's microphone step */
+const wzWave = $('#wz-wave');
+function drawWzWave() {
+  if (!$('#wizard').hidden && wz.step === 3) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = wzWave.clientWidth;
+    const h = 56;
+    if (wzWave.width !== Math.round(w * dpr)) { wzWave.width = Math.round(w * dpr); wzWave.height = h * dpr; }
+    const c = wzWave.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, w, h);
+    const n = 40;
+    const bw = (w - 4 * (n - 1)) / n;
+    for (let i = 0; i < n; i += 1) {
+      const v = Math.max(0.06, hist[Math.floor((i / n) * hist.length)] || 0);
+      c.fillStyle = i / n < waveLevel + 0.02 ? '#3ecf8e' : 'rgba(255,255,255,0.14)';
+      const bh = Math.max(5, v * h);
+      c.fillRect(i * (bw + 4), (h - bh) / 2, bw, bh);
+    }
+    $('#wz-mic').lastChild.textContent = mic ? 'Stop test' : 'Test microphone';
+  }
+  requestAnimationFrame(drawWzWave);
+}
+requestAnimationFrame(drawWzWave);
