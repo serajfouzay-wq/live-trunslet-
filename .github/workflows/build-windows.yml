@@ -12,8 +12,6 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
-    env:
-      SMOKE_DIR: ${{ runner.temp }}\lt-smoke
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +28,7 @@ jobs:
 
       - name: Offline engines work on Windows (download packs, translate, transcribe)
         env:
-          DATA_DIR: ${{ env.SMOKE_DIR }}
+          DATA_DIR: ${{ runner.temp }}\lt-smoke
         run: node scripts/smoke-offline.mjs
 
       - name: Build installer (Setup.exe) and portable exe
@@ -45,7 +43,7 @@ jobs:
           & $exe.FullName -e "const s=require('./dist/win-unpacked/resources/app/node_modules/sherpa-onnx-node'); console.log('sherpa-onnx', s.version)"
           if ($LASTEXITCODE -ne 0) { throw "speech engine did not load in Electron" }
           Remove-Item Env:ELECTRON_RUN_AS_NODE
-          $env:LT_DATA_DIR = $env:SMOKE_DIR
+          $env:LT_DATA_DIR = Join-Path $env:RUNNER_TEMP 'lt-smoke'
           $p = Start-Process -FilePath $exe.FullName -PassThru
           $ok = $false
           for ($i = 0; $i -lt 60; $i++) {
