@@ -1,6 +1,6 @@
 {
   "name": "live-translate",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Live multilingual event translator: speak in one language, show many on screen and on every phone.",
   "type": "module",
   "private": true,
