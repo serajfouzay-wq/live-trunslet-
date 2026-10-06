@@ -1,0 +1,325 @@
+{
+ "note": "Hand-written translations of common event sentences. Used offline before machine translation.",
+ "entries": [
+  {
+   "en": "Good morning everyone.",
+   "ar": "صباح الخير جميعًا.",
+   "zh": "大家早上好。",
+   "fr": "Bonjour à tous.",
+   "de": "Guten Morgen zusammen.",
+   "es": "Buenos días a todos.",
+   "tr": "Herkese günaydın.",
+   "it": "Buongiorno a tutti."
+  },
+  {
+   "en": "Good afternoon everyone.",
+   "ar": "مساء الخير جميعًا.",
+   "zh": "大家下午好。",
+   "fr": "Bon après-midi à tous.",
+   "de": "Guten Tag zusammen.",
+   "es": "Buenas tardes a todos.",
+   "tr": "Herkese iyi günler.",
+   "it": "Buon pomeriggio a tutti."
+  },
+  {
+   "en": "Good evening everyone.",
+   "ar": "مساء الخير جميعًا.",
+   "zh": "大家晚上好。",
+   "fr": "Bonsoir à tous.",
+   "de": "Guten Abend zusammen.",
+   "es": "Buenas noches a todos.",
+   "tr": "Herkese iyi akşamlar.",
+   "it": "Buonasera a tutti."
+  },
+  {
+   "en": "Welcome everyone.",
+   "ar": "مرحبًا بكم جميعًا.",
+   "zh": "欢迎大家。",
+   "fr": "Bienvenue à tous.",
+   "de": "Herzlich willkommen.",
+   "es": "Bienvenidos a todos.",
+   "tr": "Hepiniz hoş geldiniz.",
+   "it": "Benvenuti a tutti."
+  },
+  {
+   "en": "Thank you very much.",
+   "ar": "شكرًا جزيلًا.",
+   "zh": "非常感谢。",
+   "fr": "Merci beaucoup.",
+   "de": "Vielen Dank.",
+   "es": "Muchas gracias.",
+   "tr": "Çok teşekkür ederim.",
+   "it": "Grazie mille."
+  },
+  {
+   "en": "Thank you all for coming.",
+   "ar": "شكرًا لكم جميعًا على حضوركم.",
+   "zh": "感谢大家的到来。",
+   "fr": "Merci à tous d'être venus.",
+   "de": "Vielen Dank an alle fürs Kommen.",
+   "es": "Gracias a todos por venir.",
+   "tr": "Geldiğiniz için hepinize teşekkür ederim.",
+   "it": "Grazie a tutti per essere venuti."
+  },
+  {
+   "en": "Please take your seats.",
+   "ar": "يرجى التفضل بالجلوس.",
+   "zh": "请大家就座。",
+   "fr": "Veuillez prendre place.",
+   "de": "Bitte nehmen Sie Platz.",
+   "es": "Por favor, tomen asiento.",
+   "tr": "Lütfen yerlerinize oturun.",
+   "it": "Prego, prendete posto."
+  },
+  {
+   "en": "Please silence your phones.",
+   "ar": "يرجى وضع هواتفكم على الوضع الصامت.",
+   "zh": "请将手机调至静音。",
+   "fr": "Veuillez mettre vos téléphones en mode silencieux.",
+   "de": "Bitte schalten Sie Ihre Handys stumm.",
+   "es": "Por favor, silencien sus teléfonos.",
+   "tr": "Lütfen telefonlarınızı sessize alın.",
+   "it": "Vi preghiamo di silenziare i vostri telefoni."
+  },
+  {
+   "en": "We will now take a short break.",
+   "ar": "سنأخذ الآن استراحة قصيرة.",
+   "zh": "现在我们短暂休息一下。",
+   "fr": "Nous allons maintenant faire une courte pause.",
+   "de": "Wir machen jetzt eine kurze Pause.",
+   "es": "Ahora haremos una breve pausa.",
+   "tr": "Şimdi kısa bir ara vereceğiz.",
+   "it": "Ora faremo una breve pausa."
+  },
+  {
+   "en": "Coffee break.",
+   "ar": "استراحة قهوة.",
+   "zh": "茶歇。",
+   "fr": "Pause café.",
+   "de": "Kaffeepause.",
+   "es": "Pausa para el café.",
+   "tr": "Kahve molası.",
+   "it": "Pausa caffè."
+  },
+  {
+   "en": "Lunch break.",
+   "ar": "استراحة الغداء.",
+   "zh": "午餐休息。",
+   "fr": "Pause déjeuner.",
+   "de": "Mittagspause.",
+   "es": "Pausa para el almuerzo.",
+   "tr": "Öğle yemeği arası.",
+   "it": "Pausa pranzo."
+  },
+  {
+   "en": "We will continue in 15 minutes.",
+   "ar": "سنستأنف بعد 15 دقيقة.",
+   "zh": "我们将在15分钟后继续。",
+   "fr": "Nous reprendrons dans 15 minutes.",
+   "de": "Wir machen in 15 Minuten weiter.",
+   "es": "Continuaremos en 15 minutos.",
+   "tr": "15 dakika sonra devam edeceğiz.",
+   "it": "Riprenderemo tra 15 minuti."
+  },
+  {
+   "en": "The session will start in 5 minutes.",
+   "ar": "ستبدأ الجلسة بعد 5 دقائق.",
+   "zh": "会议将在5分钟后开始。",
+   "fr": "La session commencera dans 5 minutes.",
+   "de": "Die Sitzung beginnt in 5 Minuten.",
+   "es": "La sesión comenzará en 5 minutos.",
+   "tr": "Oturum 5 dakika sonra başlayacak.",
+   "it": "La sessione inizierà tra 5 minuti."
+  },
+  {
+   "en": "Let us begin.",
+   "ar": "لنبدأ.",
+   "zh": "让我们开始吧。",
+   "fr": "Commençons.",
+   "de": "Lassen Sie uns beginnen.",
+   "es": "Comencemos.",
+   "tr": "Başlayalım.",
+   "it": "Cominciamo."
+  },
+  {
+   "en": "Ladies and gentlemen.",
+   "ar": "سيداتي وسادتي.",
+   "zh": "女士们，先生们。",
+   "fr": "Mesdames et messieurs.",
+   "de": "Meine Damen und Herren.",
+   "es": "Damas y caballeros.",
+   "tr": "Hanımlar ve beyler.",
+   "it": "Signore e signori."
+  },
+  {
+   "en": "It is my pleasure to welcome our next speaker.",
+   "ar": "يسعدني أن أرحب بمتحدثنا التالي.",
+   "zh": "我很荣幸欢迎我们的下一位演讲嘉宾。",
+   "fr": "J'ai le plaisir d'accueillir notre prochain intervenant.",
+   "de": "Es ist mir eine Freude, unseren nächsten Redner zu begrüßen.",
+   "es": "Es un placer dar la bienvenida a nuestro próximo orador.",
+   "tr": "Bir sonraki konuşmacımızı ağırlamaktan mutluluk duyuyorum.",
+   "it": "È un piacere accogliere il nostro prossimo relatore."
+  },
+  {
+   "en": "Please give a warm welcome to our speaker.",
+   "ar": "رجاءً رحبوا بحرارة بمتحدثنا.",
+   "zh": "请热烈欢迎我们的演讲嘉宾。",
+   "fr": "Merci d'accueillir chaleureusement notre intervenant.",
+   "de": "Bitte begrüßen Sie unseren Redner herzlich.",
+   "es": "Por favor, den una cálida bienvenida a nuestro orador.",
+   "tr": "Lütfen konuşmacımızı sıcak bir şekilde karşılayın.",
+   "it": "Diamo un caloroso benvenuto al nostro relatore."
+  },
+  {
+   "en": "Let's give a round of applause.",
+   "ar": "لنصفق جميعًا.",
+   "zh": "让我们鼓掌。",
+   "fr": "Applaudissons.",
+   "de": "Einen großen Applaus, bitte.",
+   "es": "Demos un aplauso.",
+   "tr": "Haydi bir alkış alalım.",
+   "it": "Facciamo un applauso."
+  },
+  {
+   "en": "Are there any questions?",
+   "ar": "هل هناك أي أسئلة؟",
+   "zh": "大家有什么问题吗？",
+   "fr": "Y a-t-il des questions ?",
+   "de": "Gibt es Fragen?",
+   "es": "¿Hay alguna pregunta?",
+   "tr": "Herhangi bir sorunuz var mı?",
+   "it": "Ci sono domande?"
+  },
+  {
+   "en": "We now have time for questions.",
+   "ar": "لدينا الآن وقت للأسئلة.",
+   "zh": "现在是提问时间。",
+   "fr": "Nous avons maintenant du temps pour les questions.",
+   "de": "Wir haben jetzt Zeit für Fragen.",
+   "es": "Ahora tenemos tiempo para preguntas.",
+   "tr": "Şimdi sorular için zamanımız var.",
+   "it": "Ora abbiamo tempo per le domande."
+  },
+  {
+   "en": "Please raise your hand if you have a question.",
+   "ar": "يرجى رفع اليد إذا كان لديكم سؤال.",
+   "zh": "如果您有问题，请举手。",
+   "fr": "Veuillez lever la main si vous avez une question.",
+   "de": "Bitte heben Sie die Hand, wenn Sie eine Frage haben.",
+   "es": "Por favor, levanten la mano si tienen una pregunta.",
+   "tr": "Sorunuz varsa lütfen elinizi kaldırın.",
+   "it": "Alzate la mano se avete una domanda."
+  },
+  {
+   "en": "Thank you for your question.",
+   "ar": "شكرًا على سؤالك.",
+   "zh": "谢谢您的提问。",
+   "fr": "Merci pour votre question.",
+   "de": "Danke für Ihre Frage.",
+   "es": "Gracias por su pregunta.",
+   "tr": "Sorunuz için teşekkürler.",
+   "it": "Grazie per la sua domanda."
+  },
+  {
+   "en": "Can everyone hear me?",
+   "ar": "هل يسمعني الجميع؟",
+   "zh": "大家都能听到我说话吗？",
+   "fr": "Est-ce que tout le monde m'entend ?",
+   "de": "Können mich alle hören?",
+   "es": "¿Todos me pueden oír?",
+   "tr": "Herkes beni duyabiliyor mu?",
+   "it": "Mi sentite tutti?"
+  },
+  {
+   "en": "Lunch will be served in the main hall.",
+   "ar": "سيتم تقديم الغداء في القاعة الرئيسية.",
+   "zh": "午餐将在主厅供应。",
+   "fr": "Le déjeuner sera servi dans la salle principale.",
+   "de": "Das Mittagessen wird im Hauptsaal serviert.",
+   "es": "El almuerzo se servirá en el salón principal.",
+   "tr": "Öğle yemeği ana salonda servis edilecek.",
+   "it": "Il pranzo sarà servito nella sala principale."
+  },
+  {
+   "en": "Thank you for your attention.",
+   "ar": "شكرًا لحسن استماعكم.",
+   "zh": "感谢大家的聆听。",
+   "fr": "Merci de votre attention.",
+   "de": "Vielen Dank für Ihre Aufmerksamkeit.",
+   "es": "Gracias por su atención.",
+   "tr": "İlginiz için teşekkür ederim.",
+   "it": "Grazie per l'attenzione."
+  },
+  {
+   "en": "This concludes today's program.",
+   "ar": "بهذا نختتم برنامج اليوم.",
+   "zh": "今天的议程到此结束。",
+   "fr": "Ceci conclut le programme d'aujourd'hui.",
+   "de": "Damit ist das heutige Programm beendet.",
+   "es": "Con esto concluye el programa de hoy.",
+   "tr": "Bugünkü programımız burada sona eriyor.",
+   "it": "Con questo si conclude il programma di oggi."
+  },
+  {
+   "en": "See you tomorrow.",
+   "ar": "نراكم غدًا.",
+   "zh": "明天见。",
+   "fr": "À demain.",
+   "de": "Bis morgen.",
+   "es": "Hasta mañana.",
+   "tr": "Yarın görüşmek üzere.",
+   "it": "A domani."
+  },
+  {
+   "en": "Have a nice evening.",
+   "ar": "أتمنى لكم أمسية سعيدة.",
+   "zh": "祝大家晚上愉快。",
+   "fr": "Bonne soirée.",
+   "de": "Einen schönen Abend noch.",
+   "es": "Que tengan una buena noche.",
+   "tr": "İyi akşamlar dilerim.",
+   "it": "Buona serata."
+  },
+  {
+   "en": "Please complete the feedback form.",
+   "ar": "يرجى تعبئة استمارة التقييم.",
+   "zh": "请填写反馈表。",
+   "fr": "Merci de remplir le formulaire d'évaluation.",
+   "de": "Bitte füllen Sie den Feedbackbogen aus.",
+   "es": "Por favor, completen el formulario de evaluación.",
+   "tr": "Lütfen geri bildirim formunu doldurun.",
+   "it": "Vi preghiamo di compilare il modulo di valutazione."
+  },
+  {
+   "en": "I would like to thank our sponsors.",
+   "ar": "أود أن أشكر رعاتنا.",
+   "zh": "我要感谢我们的赞助商。",
+   "fr": "Je tiens à remercier nos sponsors.",
+   "de": "Ich möchte unseren Sponsoren danken.",
+   "es": "Me gustaría agradecer a nuestros patrocinadores.",
+   "tr": "Sponsorlarımıza teşekkür etmek istiyorum.",
+   "it": "Vorrei ringraziare i nostri sponsor."
+  },
+  {
+   "en": "Thank you, and enjoy the rest of the event.",
+   "ar": "شكرًا لكم، واستمتعوا ببقية الفعالية.",
+   "zh": "谢谢大家，祝大家在接下来的活动中愉快。",
+   "fr": "Merci, et profitez bien du reste de l'événement.",
+   "de": "Vielen Dank, und genießen Sie den Rest der Veranstaltung.",
+   "es": "Gracias, y disfruten del resto del evento.",
+   "tr": "Teşekkürler, etkinliğin geri kalanının tadını çıkarın.",
+   "it": "Grazie, e buon proseguimento dell'evento."
+  },
+  {
+   "en": "Please do not hesitate to ask questions.",
+   "ar": "لا تترددوا في طرح الأسئلة.",
+   "zh": "请随时提问。",
+   "fr": "N'hésitez pas à poser des questions.",
+   "de": "Zögern Sie nicht, Fragen zu stellen.",
+   "es": "No duden en hacer preguntas.",
+   "tr": "Soru sormaktan çekinmeyin.",
+   "it": "Non esitate a fare domande."
+  }
+ ]
+}

@@ -64,6 +64,7 @@ try {
   out.hidden = true;
   out.ok = out.wizardAutoOpened && out.deepgramStepWorked && out.claudeStepWorked && out.setupCardHidden && out.displayLines.length === 2 && out.phoneLines.length >= 1 && out.hidden;
 } catch (e) { out.error = String(e).slice(0, 400); }
-await browser.close(); server.kill(); mocks.close(); fs.rmSync(dataDir, { recursive: true, force: true });
+await browser.close(); mocks.close();
+await new Promise((r) => { server.once('exit', r); server.kill(); }); fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 console.log(JSON.stringify(out, null, 1));
 process.exit(out.ok ? 0 : 1);

@@ -70,7 +70,9 @@
             <div class="grid2 tight">
               <label class="f">Engine
                 <select id="engine">
-                  <option value="deepgram">Deepgram · best quality</option>
+                  <option value="auto">Automatic · Deepgram online, offline without internet</option>
+                  <option value="deepgram">Deepgram · best quality (internet)</option>
+                  <option value="local">Offline · on this laptop</option>
                   <option value="browser" id="opt-browser">Browser · free (Chrome / Edge)</option>
                   <option value="demo">Demo · no keys needed</option>
                 </select>
@@ -252,6 +254,33 @@
 
         <!-- ============================ SETTINGS ========================== -->
         <section class="tab" id="tab-settings">
+          <div class="card offline-card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-wifi"/></svg></span><div><h3>Offline mode · works without internet</h3><p>Download these once (at home or the office). Then the app hears and translates on this laptop, free, even with no internet. It switches by itself when the internet drops.</p></div></div>
+            <div id="packs" class="packs"></div>
+            <div class="row gap" style="margin-top:12px"><button class="btn primary" id="all-packs"><svg class="ic"><use href="/assets/icons.svg#i-arrow-down"/></svg>Download everything</button><span class="hint" id="pack-err" style="color:#ff9c9c"></span></div>
+            <p class="hint" id="offline-now"></p>
+            <div class="grid2" style="margin-top:16px">
+              <label class="f">Translation
+                <select id="tmode"><option value="auto">Automatic · Claude online, offline without internet</option><option value="claude">Always Claude (best quality)</option><option value="offline">Always offline (free, no internet)</option></select>
+              </label>
+              <label class="f">Offline speech model
+                <select id="squality"><option value="auto">Automatic · accurate for Arabic & Italian, fast for others</option><option value="fast">Fast (text appears quickest)</option><option value="accurate">Accurate (better, a few seconds slower)</option></select>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-sparkles"/></svg></span><div><h3>Teach the offline mode</h3><p>Before an event, paste the speeches, the agenda, names and key sentences. Claude translates them once into every language, and the offline mode then uses those exact translations, even without internet. Everything Claude translates during events is learned automatically too.</p></div></div>
+            <textarea id="teach-text" rows="6" placeholder="Paste speeches, agenda, welcome text, names…"></textarea>
+            <div class="row gap" style="margin-top:12px"><button class="btn primary" id="teach-go">Learn it with Claude</button><span class="hint" id="teach-res"></span></div>
+            <div class="row gap" style="margin-top:14px"><span class="hint" id="mem-count"></span><button class="btn ghost" id="mem-forget">Forget learned</button></div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-languages"/></svg></span><div><h3>Try the offline translation</h3><p>See how the offline engine translates a sentence into the languages on your big screen.</p></div></div>
+            <form class="type" onsubmit="return false"><input id="try-text" placeholder="e.g. Welcome to our conference, we start in ten minutes." autocomplete="off"><button class="btn" id="try-go" type="button">Translate offline</button></form>
+            <div id="try-out" class="try-out"></div>
+          </div>
           <div class="card">
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-mic"/></svg></span><div><h3>Speech recognition · Deepgram</h3><p>Streams your microphone for fast, accurate text. Get a key at deepgram.com.</p></div><button class="btn ghost" data-wizard="1" type="button"><svg class="ic"><use href="/assets/icons.svg#i-help"/></svg>How to get it</button><span class="badge" id="badge-dg"></span></div>
             <input id="key-dg" type="password" placeholder="Paste Deepgram API key" autocomplete="off">
@@ -328,6 +357,7 @@
         <div class="wz-card"><span class="wz-ico">🌍</span><b>Claude</b><small>The <em>translator</em>. Turns that text into every other language.</small></div>
       </div>
       <p class="hint">You pay each service directly, only for what you use. New Deepgram accounts normally start with free credit. Your keys stay on this computer.</p>
+      <div class="wz-offline"><b>No internet at your events, or no keys?</b> The app can also hear and translate on this laptop for free. Download the <b>offline packs</b> once in <b>Settings → Offline mode</b>. With keys and offline packs together, it uses the online services when it can and switches by itself when the internet drops.</div>
     </section>
 
     <section class="wz-step" data-step="1" hidden>
@@ -368,6 +398,7 @@
       <div class="wz-done">✓</div>
       <h2>You're ready</h2>
       <p class="lead">Choose the speaker's language, press <b>Start listening</b>, then <b>Open big screen</b>. Show the QR code so the audience can read on their phones.</p>
+      <div class="wz-offline">Tip: download the <b>offline packs</b> (Settings → Offline mode) so the event keeps going if the internet fails.</div>
     </section>
 
     <footer class="wz-foot">

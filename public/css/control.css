@@ -319,3 +319,23 @@ select.mini { width: auto; padding: 4px 30px 4px 10px; font-size: 12px; border-r
 .wz-foot { display: flex; align-items: center; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
 .spacer { flex: 1; }
 @media (max-width: 600px) { .wz-two { grid-template-columns: 1fr; } .wz { padding: 24px 20px 18px; } .wz-paste { flex-direction: column; } }
+
+/* -------------------------------------------------------------- offline mode */
+.offline-card { border-color: rgba(62, 207, 142, 0.35); background: linear-gradient(180deg, rgba(62, 207, 142, 0.08), rgba(255, 255, 255, 0.03)); }
+.offline-card .ci { color: var(--good); background: rgba(62, 207, 142, 0.13); border-color: rgba(62, 207, 142, 0.3); }
+.packs { display: flex; flex-direction: column; gap: 8px; }
+.pack { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(3, 6, 14, 0.4); }
+.pack .pk-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #4a5778; }
+.pack.ok .pk-dot { background: var(--good); box-shadow: 0 0 10px var(--good); }
+.pack .pk-main { flex: 1; min-width: 0; }
+.pack b { display: block; }
+.pack small { color: var(--muted); }
+.pack .bar { height: 6px; margin-top: 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.pack .bar[hidden] { display: none; }
+.pack .bar i { display: block; height: 100%; background: var(--grad); transition: width 0.3s; }
+.try-out { display: flex; flex-direction: column; gap: 8px; }
+.try-row { display: flex; gap: 12px; align-items: baseline; padding: 9px 12px; border-radius: 10px; background: rgba(3, 6, 14, 0.4); border: 1px solid var(--line); }
+.try-row b { flex: none; width: 26px; color: var(--muted); font-size: 11px; }
+.try-row span { flex: 1; }
+.try-row small { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.wz-offline { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: rgba(62, 207, 142, 0.09); border: 1px solid rgba(62, 207, 142, 0.3); color: #c9f2e0; font-size: 13.5px; line-height: 1.55; }

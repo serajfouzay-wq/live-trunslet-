@@ -8,6 +8,7 @@ let cfg = { hasDeepgram: false, hasAnthropic: false, model: '', sttEngine: 'deep
 let net = { addresses: [], joinUrl: '' };
 let viewers = { display: 0, phone: 0, langs: {} };
 let pipe = null;
+let offlineState = null;
 const desktop = window.desktop || null;
 
 /* ------------------------------------------------------------------ toasts */
@@ -36,6 +37,7 @@ const conn = connect('control', {
         break;
       case 'viewers': viewers = m; renderStatus(); renderPhoneLangs(); break;
       case 'pipe': pipe = m; renderPipe(); break;
+      case 'offline': offlineState = m; renderOffline(); break;
       case 'draft': scheduleFeed(); break;
       case 'notice': toast(m.message, m.level); break;
       case 'info': net.joinUrl = m.joinUrl; renderNet(); renderJoin(); break;
@@ -95,9 +97,9 @@ function setPill(sel, state, text) {
 
 function renderStatus() {
   const s = status.stt || {};
-  const label = { idle: 'Speech: idle', connecting: 'Speech: connecting…', connected: `Speech: ${status.engine || 'ready'}`, error: `Speech: ${s.detail || 'error'}` }[s.state] || 'Speech';
+  const label = { idle: 'Speech: idle', connecting: 'Speech: connecting…', connected: `Speech: ${{ deepgram: 'Deepgram', local: 'offline', browser: 'browser', demo: 'demo' }[status.engine] || 'ready'}`, error: `Speech: ${s.detail || 'error'}` }[s.state] || 'Speech';
   setPill('#pill-stt', s.state === 'idle' ? 'idle' : s.state, label);
-  setPill('#pill-tr', status.translator === 'claude' ? 'ok' : status.translator === 'demo' ? 'idle' : 'error', status.translator === 'claude' ? 'Translation: Claude' : status.translator === 'demo' ? 'Translation: demo' : 'Translation: no Claude key');
+  setPill('#pill-tr', ['claude', 'offline'].includes(status.translator) ? 'ok' : status.translator === 'demo' ? 'idle' : 'error', { claude: 'Translation: Claude', offline: 'Translation: offline', demo: 'Translation: demo' }[status.translator] || 'Translation: not set up');
   const v = $('#pill-viewers');
   v.hidden = false;
   v.dataset.state = viewers.display + viewers.phone > 0 ? 'ok' : 'idle';
@@ -136,7 +138,7 @@ function renderPipe() {
     const testing = !!mic;
     setNode('n-mic', testing ? (Date.now() - lastSound < 3000 ? 'ok' : 'warn') : 'off', testing ? (Date.now() - lastSound < 3000 ? 'Hearing sound' : 'Quiet') : 'Off');
     setNode('n-stt', 'off', 'Off'); setNode('n-txt', 'off', 'Off');
-    setNode('n-tr', status.translator === 'missing' ? 'warn' : 'off', status.translator === 'missing' ? 'Needs Claude key' : 'Ready');
+    setNode('n-tr', status.translator === 'missing' ? 'warn' : 'off', status.translator === 'missing' ? 'Not set up' : status.translator === 'offline' ? 'Offline ready' : 'Ready');
     if (!testing) msg.hidden = true;
     return;
   }
@@ -156,20 +158,20 @@ function renderPipe() {
   if (engine === 'browser') setNode('n-stt', 'ok', 'Browser');
   else if (st.state === 'error') { setNode('n-stt', 'bad', st.detail || 'Error'); advice ||= `Speech service problem: ${st.detail || 'unknown'}.`; }
   else if (st.state === 'connecting') setNode('n-stt', 'warn', 'Connecting…');
-  else if (st.state === 'connected') setNode('n-stt', 'ok', engine === 'deepgram' ? `${p.audioKB ?? 0} KB sent` : 'Connected');
+  else if (st.state === 'connected') setNode('n-stt', 'ok', engine === 'deepgram' ? `Deepgram · ${p.audioKB ?? 0} KB` : engine === 'local' ? 'Offline · this laptop' : 'Connected');
   else setNode('n-stt', 'warn', 'Starting…');
 
   // text coming back
-  if (engine === 'deepgram' && sinceStart > 9000 && !p.results && lastSound && Date.now() - lastSound < 4000) {
+  if ((engine === 'deepgram' || engine === 'local') && sinceStart > 9000 && !p.results && lastSound && Date.now() - lastSound < 4000) {
     setNode('n-txt', 'warn', 'No text yet');
     advice ||= `The speech service hears audio but returned no text. Check that the speaker's language (${store.settings.sourceLang === 'auto' ? 'Auto' : store.langs[store.settings.sourceLang]?.name}) is right, and speak a little louder or closer.`;
   } else if (p.results) setNode('n-txt', p.textAgo != null && p.textAgo < 20000 ? 'ok' : 'warn', `${p.segments || 0} sentence${p.segments === 1 ? '' : 's'}`);
   else setNode('n-txt', 'warn', 'Listening…');
 
   // translation
-  if (status.translator === 'missing') { setNode('n-tr', 'bad', 'No Claude key'); advice ||= 'Text is arriving, but there is no Claude key to translate it. Open Settings and add your key.'; }
+  if (status.translator === 'missing') { setNode('n-tr', 'bad', 'Not set up'); advice ||= 'Text is arriving, but nothing can translate it: add a Claude key, or download the offline translation pack (Settings → Offline mode).'; }
   else if (p.trFail && (p.trFail > p.trOk * 0.3)) { setNode('n-tr', 'bad', 'Problem'); advice ||= p.lastError || 'Translation is failing.'; }
-  else if (p.trOk) setNode('n-tr', 'ok', `${(p.avgMs / 1000).toFixed(1)} s each`);
+  else if (p.trOk) setNode('n-tr', 'ok', `${status.translator === 'offline' ? 'Offline' : 'Claude'} · ${(p.avgMs / 1000).toFixed(1)} s`);
   else setNode('n-tr', 'warn', status.translator === 'demo' ? 'Demo' : 'Waiting');
 
   msg.hidden = !advice;
@@ -479,7 +481,7 @@ async function startMic() {
   mute.gain.value = 0;
   src.connect(node).connect(mute).connect(ctx.destination);
   node.port.onmessage = (e) => {
-    if (e.data.pcm) { if (status.engine === 'deepgram') conn.send(e.data.pcm); }
+    if (e.data.pcm) { if (status.running && !['demo', 'browser'].includes(status.engine)) conn.send(e.data.pcm); }
     if (e.data.level !== undefined) {
       waveTarget = Math.min(1, Math.sqrt(e.data.level) * 1.2);
       if (e.data.level > 0.02) lastSound = Date.now();
@@ -556,7 +558,7 @@ async function toggleListening() {
     } else {
       const engine = $('#engine').value;
       try { localStorage.setItem('engine', engine); } catch { /* ignore */ }
-      if (engine === 'deepgram' && !cfg.hasDeepgram) { toast('Add your Deepgram key in Settings first (or try the Demo engine).', 'error'); return; }
+      if (engine === 'deepgram' && !cfg.hasDeepgram) { toast('Add your Deepgram key in Settings first, or use the Offline engine.', 'error'); return; }
       startedAt = Date.now();
       if (engine !== 'demo') await startMic();
       startedAt = Date.now();
@@ -644,7 +646,7 @@ function renderConfig() {
   try { saved = localStorage.getItem('engine'); } catch { /* ignore */ }
   const eng = $('#engine');
   if (!eng.dataset.init) {
-    eng.value = saved || (cfg.hasDeepgram ? cfg.sttEngine : 'demo');
+    eng.value = [...eng.options].some((o) => o.value === saved) ? saved : 'auto';
     eng.dataset.init = '1';
   }
 }
@@ -1007,9 +1009,10 @@ for (const id of ['wz-dg', 'wz-an']) $(`#${id}`).addEventListener('keydown', (e)
 function maybeAutoGuide() {
   let seen = '';
   try { seen = localStorage.getItem('wizardSeen') || ''; } catch { /* ignore */ }
-  if (!seen && !cfg.hasDeepgram && !cfg.hasAnthropic) openWizard(0);
+  const offlineReady = offlineState?.packs?.translation?.installed && (offlineState.packs['speech-fast']?.installed || offlineState.packs['speech-accurate']?.installed);
+  if (!seen && !cfg.hasDeepgram && !cfg.hasAnthropic && !offlineReady) openWizard(0);
 }
-loadState().then(maybeAutoGuide).catch(() => {});
+Promise.all([loadState(), loadOffline()]).then(maybeAutoGuide).catch(() => {});
 
 /* small meter inside the guide's microphone step */
 const wzWave = $('#wz-wave');
@@ -1035,3 +1038,89 @@ function drawWzWave() {
   requestAnimationFrame(drawWzWave);
 }
 requestAnimationFrame(drawWzWave);
+
+/* --------------------------------------------------------------- offline mode */
+const mb = (b) => `${Math.round(b / 1e6)} MB`;
+function renderOffline() {
+  const o = offlineState;
+  if (!o) return;
+  const box = $('#packs');
+  box.replaceChildren();
+  for (const [id, p] of Object.entries(o.packs)) {
+    const row = document.createElement('div');
+    row.className = `pack ${p.installed ? 'ok' : ''}`;
+    const busy = o.job && !o.job.done && o.job.pack === id;
+    row.innerHTML = '<span class="pk-dot"></span><div class="pk-main"><b></b><small></small><div class="bar" hidden><i></i></div></div><div class="pk-act"></div>';
+    row.querySelector('b').textContent = p.label;
+    row.querySelector('small').textContent = p.installed ? `Installed ✓ · ${mb(p.bytes)}` : `${mb(p.bytes)} download, once`;
+    const act = row.querySelector('.pk-act');
+    if (busy) {
+      const pct = Math.min(100, Math.round((o.job.received / o.job.total) * 100));
+      row.querySelector('.bar').hidden = false;
+      row.querySelector('.bar i').style.width = `${pct}%`;
+      row.querySelector('small').textContent = `${o.job.phase}… ${pct}% (${mb(o.job.received)} of ${mb(o.job.total)})`;
+      const c = document.createElement('button'); c.className = 'btn ghost'; c.textContent = 'Cancel';
+      c.onclick = () => api('POST', '/offline/cancel');
+      act.append(c);
+    } else if (p.installed) {
+      const r = document.createElement('button'); r.className = 'btn ghost'; r.textContent = 'Remove';
+      r.onclick = async () => { if (confirm(`Remove "${p.label}"? You can download it again later.`)) offlineState = await api('DELETE', `/offline/pack/${id}`), renderOffline(); };
+      act.append(r);
+    } else {
+      const d = document.createElement('button'); d.className = 'btn primary'; d.textContent = 'Download';
+      d.disabled = !!(o.job && !o.job.done);
+      d.onclick = () => api('POST', '/offline/download', { pack: id });
+      act.append(d);
+    }
+    box.append(row);
+  }
+  $('#all-packs').hidden = Object.values(o.packs).every((p) => p.installed);
+  if (o.job?.done && o.job.error) $('#pack-err').textContent = o.job.error; else $('#pack-err').textContent = '';
+  const m = o.memory || {};
+  $('#mem-count').textContent = `${m.learned || 0} learned from Claude and your texts · ${m.phrasebook || 0} built-in event phrases`;
+  const t = o.teach;
+  const tb = $('#teach-go');
+  if (t && !t.done) { tb.disabled = true; tb.textContent = `Learning… ${t.finished}/${t.total || '…'}`; }
+  else { tb.disabled = false; tb.textContent = 'Learn it with Claude'; }
+  $('#teach-res').textContent = t?.done ? (t.error ? t.error : `Learned ${t.sentences} sentences in every language${t.failed ? ` (${t.failed} translations failed)` : ''}. They will be used offline.`) : '';
+  const tr = o.translator || {};
+  $('#offline-now').textContent = tr.engine === 'offline' ? (tr.internetLost ? 'Internet lost: translating offline right now.' : 'Translating offline right now.') : tr.engine === 'claude' ? (tr.offlineReady ? 'Using Claude now. If the internet drops, it switches to offline by itself.' : 'Using Claude now. Download the translation pack to keep working without internet.') : 'Translation is not set up yet.';
+  $('#tmode').value = cfg.translationMode || 'auto';
+  $('#squality').value = cfg.speechQuality || 'auto';
+}
+
+async function loadOffline() { try { offlineState = await api('GET', '/offline'); renderOffline(); } catch { /* ignore */ } }
+loadOffline();
+$('#all-packs').onclick = async () => {
+  for (const id of ['translation', 'speech-fast', 'speech-accurate']) {
+    if (offlineState?.packs[id]?.installed) continue;
+    await api('POST', '/offline/download', { pack: id });
+    // wait for this pack to finish before starting the next one
+    await new Promise((r) => { const t = setInterval(() => { if (!offlineState?.job || offlineState.job.done) { clearInterval(t); r(); } }, 800); });
+    if (offlineState?.job?.error) break;
+  }
+};
+$('#tmode').onchange = async () => { const r = await api('PUT', '/config', { translationMode: $('#tmode').value }); cfg = r.config; loadOffline(); };
+$('#squality').onchange = async () => { const r = await api('PUT', '/config', { speechQuality: $('#squality').value }); cfg = r.config; };
+$('#teach-go').onclick = async () => {
+  const text = $('#teach-text').value.trim();
+  if (!text) return toast('Paste your speech, agenda or names first.');
+  try { const r = await api('POST', '/offline/teach', { text }); toast(`Learning ${r.sentences} sentences…`); } catch (e) { toast(e.message, 'error'); }
+};
+$('#mem-forget').onclick = async () => { if (confirm('Forget everything learned from Claude and your texts? The built-in phrases stay.')) { offlineState = await api('POST', '/offline/forget'); renderOffline(); } };
+$('#try-go').onclick = async () => {
+  const out = $('#try-out');
+  out.textContent = 'Translating…';
+  try {
+    const r = await api('POST', '/offline/try', { text: $('#try-text').value });
+    out.replaceChildren();
+    for (const [l, v] of Object.entries(r.results)) {
+      const row = document.createElement('div'); row.className = 'try-row';
+      row.innerHTML = '<b></b><span></span><small></small>';
+      row.querySelector('b').textContent = l.toUpperCase();
+      row.querySelector('span').textContent = v.text || v.error; row.querySelector('span').dir = store.langs[l]?.dir || 'ltr';
+      row.querySelector('small').textContent = v.how === 'offline' ? `${v.ms} ms` : v.how ? 'from memory' : '';
+      out.append(row);
+    }
+  } catch (e) { out.textContent = e.message; }
+};

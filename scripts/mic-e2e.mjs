@@ -54,5 +54,7 @@ let ok = false;
 for (let i = 0; i < 40 && !ok; i += 1) { await page.waitForTimeout(250); ok = (await page.locator('#feed .fs .tr span', { hasText: '[' }).count()) > 0; }
 const label = await page.textContent('#go-text');
 console.log(JSON.stringify({ audioBytes, stillListening: label, translated: ok, errors }));
-await browser.close(); server.kill(); dg.close(); an.close(); fs.rmSync(dataDir, { recursive: true, force: true });
+await browser.close(); dg.close(); an.close();
+await new Promise((r) => { server.once('exit', r); server.kill(); });
+fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 process.exit(ok && audioBytes > 48000 ? 0 : 1);

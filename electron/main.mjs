@@ -9,7 +9,7 @@ const root = path.join(here, '..');
 const icon = path.join(root, 'build', 'icon.png');
 
 // Keep the user's settings, pictures and transcripts outside the install folder (survives updates).
-const dataDir = path.join(app.getPath('userData'), 'data');
+const dataDir = process.env.LT_DATA_DIR || path.join(app.getPath('userData'), 'data');
 process.env.DATA_DIR = dataDir;
 fs.mkdirSync(dataDir, { recursive: true });
 

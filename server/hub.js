@@ -6,7 +6,9 @@ import { DIRS, config } from './config.js';
 import { LANGUAGES } from './languages.js';
 import { DEFAULT_SETTINGS, sanitize, saveSettings, viewerSettings } from './settings.js';
 import { detectLang } from './detect.js';
-import { translate, explain, isFatal } from './translate.js';
+import { translate, explain, isFatal, translatorState } from './translate.js';
+import { createLocalStt } from './offline/stt.js';
+import { offline } from './offline/manager.js';
 import { log } from './log.js';
 import { createDeepgram } from './stt/deepgram.js';
 import { runDemo } from './demo.js';
@@ -17,6 +19,14 @@ const join = (a, b) => (!a ? b : CJK_END.test(a) && CJK_START.test(b) ? a + b : 
 const SENTENCE_END = /[.!?…。！？؟]["'”’)\]]*$/;
 const SOFT_END = /[,;:،؛，、：]$/;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Quick check whether the internet (Deepgram) can be reached. */
+async function internetUp() {
+  try {
+    await fetch(`${process.env.DEEPGRAM_REST_URL || 'https://api.deepgram.com'}/v1/projects`, { method: 'HEAD', signal: AbortSignal.timeout(2500) });
+    return true;
+  } catch { return false; }
+}
+
 const freshPipe = () => ({ audioChunks: 0, audioBytes: 0, lastAudioAt: 0, lastResultAt: 0, results: 0, segments: 0, trOk: 0, trFail: 0, trMs: 0, lastError: '', startedAt: Date.now() });
 
 export class Hub {
@@ -164,7 +174,8 @@ export class Hub {
       running: this.running,
       engine: this.engine,
       stt: this.stt,
-      translator: config.anthropicKey ? 'claude' : this.engine === 'demo' ? 'demo' : 'missing',
+      translator: (() => { const t = translatorState(); return t.engine === 'claude' ? 'claude' : t.engine === 'offline' ? 'offline' : this.engine === 'demo' ? 'demo' : 'missing'; })(),
+      engineChoice: this.engineChoice || null,
     };
   }
 
@@ -473,7 +484,7 @@ export class Hub {
   // language) and show it as a draft. The final translation replaces it as soon as the sentence ends.
 
   maybeDraft() {
-    if (!this.settings.fastMode || !this.running || this.engine === 'demo' || !config.anthropicKey) return;
+    if (!this.settings.fastMode || !this.running || this.engine === 'demo' || translatorState().engine === 'none') return;
     const part = this.currentPartial();
     if (!part) return;
     const cjk = part.lang === 'zh';
@@ -549,22 +560,44 @@ export class Hub {
   async start({ engine, owner }) {
     if (this.running) this.stop();
     this.owner = owner || null;
-    engine = ['deepgram', 'browser', 'demo'].includes(engine) ? engine : config.sttEngine;
+    engine = ['auto', 'deepgram', 'local', 'browser', 'demo'].includes(engine) ? engine : config.sttEngine;
+    this.engineChoice = engine;
+    const localReady = !!offline.speechSizeFor(this.settings.sourceLang, config.speechQuality);
+
+    if (engine === 'auto') {
+      // Deepgram when there is a key and internet, otherwise the offline model on this laptop.
+      if (config.deepgramKey && (!localReady || await internetUp())) engine = 'deepgram';
+      else if (localReady) engine = 'local';
+      else {
+        this.owner = null;
+        this.notify('error', 'No speech engine available: add a Deepgram key (Settings) or download the offline speech pack (Settings → Offline mode).');
+        this.setStt('error', 'No speech engine');
+        return;
+      }
+    }
     if (engine === 'deepgram' && !config.deepgramKey) {
       this.owner = null;
-      this.notify('error', 'No Deepgram API key yet. Add it under Settings, or choose the Demo engine.');
+      this.notify('error', 'No Deepgram API key yet. Add it under Settings, or choose the Offline or Demo engine.');
       this.setStt('error', 'No Deepgram key');
+      return;
+    }
+    if (engine === 'local' && !localReady) {
+      this.owner = null;
+      this.notify('error', 'The offline speech pack is not installed yet. Download it in Settings → Offline mode.');
+      this.setStt('error', 'Offline pack missing');
       return;
     }
     // Mark as running BEFORE opening the engine: engines report status while they connect.
     this.engine = engine;
     this.running = true;
     this.pipe = freshPipe();
-    log('info', `start listening: engine=${engine} source=${this.settings.sourceLang} model=${config.model}`);
+    log('info', `start listening: engine=${engine} (chosen ${this.engineChoice}) source=${this.settings.sourceLang} model=${config.model}`);
     clearInterval(this.pipeTimer);
-    this.pipeTimer = setInterval(() => this.broadcast(this.pipeMsg(), ['control']), 1000);
+    this.pipeTimer = setInterval(() => { this.broadcast(this.pipeMsg(), ['control']); this.maybeBackOnline(); }, 1000);
     if (engine === 'deepgram') {
       this.openDeepgram();
+    } else if (engine === 'local') {
+      this.openLocal();
     } else if (engine === 'demo') {
       this.demoAbort = new AbortController();
       runDemo(this, this.demoAbort.signal);
@@ -572,13 +605,15 @@ export class Hub {
     } else {
       this.setStt('connected', 'browser');
     }
+    if (engine !== 'browser' && engine !== 'demo') offline.mt.warm(this.settings.sourceLang === 'auto' ? 'en' : this.settings.sourceLang, this.wantedLangs()).catch(() => {});
     this.broadcast(this.statusMsg(), ['control']);
     this.setLive(true);
   }
 
   openDeepgram() {
-    this.dg?.close();
+    this.closeEngines();
     const auto = this.settings.sourceLang === 'auto';
+    clearTimeout(this.fallbackTimer);
     this.dg = createDeepgram({
       key: config.deepgramKey,
       lang: LANGUAGES[auto ? 'en' : this.settings.sourceLang].dg,
@@ -587,24 +622,73 @@ export class Hub {
       onResult: (ev) => this.ingestStt(ev),
       onStatus: ({ state, detail }) => {
         this.setStt(state, detail);
-        if (state === 'error') this.notify('error', detail);
+        // Automatic engine: if Deepgram cannot be reached for a few seconds, continue offline.
+        if (this.engineChoice === 'auto' && state !== 'connected' && !this.fallbackTimer && offline.speechSizeFor(this.settings.sourceLang, config.speechQuality)) {
+          this.fallbackTimer = setTimeout(() => {
+            this.fallbackTimer = null;
+            if (this.running && this.engine === 'deepgram' && this.stt.state !== 'connected') {
+              this.notify('warn', 'No internet: switched to offline speech recognition on this laptop.');
+              this.engine = 'local';
+              this.openLocal();
+              this.broadcast(this.statusMsg(), ['control']);
+            }
+          }, 4000);
+        }
+        if (state === 'connected') { clearTimeout(this.fallbackTimer); this.fallbackTimer = null; }
+        if (state === 'error' && this.engine === 'deepgram') this.notify('error', detail);
       },
     });
   }
 
+  openLocal() {
+    this.closeEngines();
+    this.lastProbe = Date.now();
+    this.local = createLocalStt({
+      lang: this.settings.sourceLang,
+      quality: config.speechQuality,
+      onResult: (ev) => this.ingestStt(ev),
+      onStatus: ({ state, detail }) => { this.setStt(state, detail); if (state === 'error') this.notify('error', detail); },
+    });
+  }
+
+  closeEngines() {
+    clearTimeout(this.fallbackTimer);
+    this.fallbackTimer = null;
+    this.dg?.close();
+    this.dg = null;
+    this.local?.close();
+    this.local = null;
+  }
+
+  /** Automatic engine running offline: when the internet is back (and nobody is mid-sentence), return to Deepgram. */
+  async maybeBackOnline() {
+    if (!this.running || this.engineChoice !== 'auto' || this.engine !== 'local' || !config.deepgramKey) return;
+    if (Date.now() - (this.lastProbe || 0) < 30000 || this.buf.text || this.probing) return;
+    this.lastProbe = Date.now();
+    this.probing = true;
+    const up = await internetUp();
+    this.probing = false;
+    if (up && this.running && this.engine === 'local' && !this.buf.text) {
+      this.notify('info', 'Internet is back: using Deepgram again.');
+      this.engine = 'deepgram';
+      this.openDeepgram();
+      this.broadcast(this.statusMsg(), ['control']);
+    }
+  }
+
   /** Source language or speaker mode changed while live: reconnect speech recognition. */
   reconfigure() {
-    if (this.running && this.engine === 'deepgram') {
-      this.commit();
-      this.openDeepgram();
-    }
+    if (!this.running) return;
+    if (this.engine === 'deepgram') { this.commit(); this.openDeepgram(); }
+    if (this.engine === 'local') { this.commit(); this.openLocal(); }
   }
 
   audio(buf) {
     this.pipe.audioChunks += 1;
     this.pipe.audioBytes += buf.length;
     this.pipe.lastAudioAt = Date.now();
-    this.dg?.send(buf);
+    if (this.engine === 'deepgram') this.dg?.send(buf);
+    else if (this.engine === 'local') this.local?.send(buf);
   }
 
   stop() {
@@ -612,8 +696,8 @@ export class Hub {
     log('info', 'stop listening');
     clearInterval(this.pipeTimer);
     this.stopDrafts();
-    this.dg?.close();
-    this.dg = null;
+    this.closeEngines();
+    this.engineChoice = null;
     this.demoAbort?.abort();
     this.demoAbort = null;
     this.running = false;

@@ -55,6 +55,26 @@ Phones and the laptop must be on the same Wi-Fi (or the laptop's hotspot). Tick 
 - **Auto** detects the language by itself, but only for the languages Deepgram's multilingual mode covers (English, Spanish, French, Italian, German and a few others). For **Arabic, Chinese and Turkish, pick the language** with its key.
 - *Several people talking* labels speakers (Speaker 1, 2, …) inside one language.
 
+## Offline mode (no internet, no cost)
+
+The app can hear and translate **on the laptop itself**. In **Settings → Offline mode** press **Download everything** once, while you have internet (about 1.2 GB):
+
+| Pack | What | Size |
+| --- | --- | --- |
+| Translation | Mozilla's Firefox Translations models (the same offline engine Firefox uses), all 8 languages | 375 MB |
+| Speech · fast | Whisper *base*: text about 1 s after each sentence | 208 MB |
+| Speech · accurate | Whisper *small*: better (especially Arabic and Italian), a few seconds slower | 640 MB |
+
+With the default **Automatic** settings it uses Deepgram and Claude when the internet works, and switches by itself to the offline engines when it doesn't (and back again when the internet returns). You can also choose *Always offline* to never use the internet or pay anything.
+
+**How the offline mode gets better ("training")**
+- **Built-in phrasebook**: common event sentences (welcome, breaks, Q&A, thanks…) hand-translated into all 8 languages, used word-for-word.
+- **It learns from Claude**: every sentence Claude translates is remembered. Offline, the same or nearly the same sentence (a misheard word, different numbers) comes out exactly like Claude's translation.
+- **Teach it before the event**: paste speeches, the agenda and names into *Teach the offline mode*. Claude translates them once into every language; offline, those sentences come out perfectly.
+- **Glossary** works offline too: names stay exactly as written, and your required wordings are used.
+
+Honest note: the offline translation is good but below Claude for complex or idiomatic sentences, and offline speech recognition is weaker for Arabic than Deepgram. Retraining the neural models themselves needs large datasets and GPUs; the app instead improves through the memory above, which is where events repeat themselves anyway.
+
 ## Faster mode
 
 Normally each sentence is translated when the speaker finishes it. **Faster mode** translates while they are still talking, so the screen is only a moment behind. It makes more Claude requests (more cost). Turn it on in *Live*.
@@ -81,6 +101,7 @@ npm run dist        # builds the Windows installer (on Windows; on Linux it buil
 | Path | What |
 | --- | --- |
 | `electron/` | Desktop shell: window, big-screen window, menu, microphone permission |
+| `server/offline/` | Offline engines: Bergamot translation, Whisper speech (sherpa-onnx), translation memory, phrasebook, glossary, model downloads |
 | `server/` | Speech, translation, WebSockets, exports, logs |
 | `public/`, `views/` | Big screen, phone page, control panel |
 | `test/`, `scripts/` | Automated tests and end-to-end checks |

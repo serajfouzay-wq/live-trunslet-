@@ -10,7 +10,9 @@ import { Hub } from './hub.js';
 import { loadSettings, viewerSettings } from './settings.js';
 import { isLang } from './languages.js';
 import { lanAddresses, isLoopback } from './net.js';
-import { testAnthropic, explain } from './translate.js';
+import { testAnthropic, explain, translatorState, offlineTranslate, teach } from './translate.js';
+import { offline } from './offline/manager.js';
+import { detectLang } from './detect.js';
 import { testDeepgram } from './health.js';
 import { log, recentLog, LOG_DIR } from './log.js';
 import { registerLibrary } from './library.js';
@@ -63,6 +65,7 @@ api.patch('/settings', (req, res) => res.json(hub.updateSettings(req.body || {})
 
 api.put('/config', (req, res) => {
   saveConfig(req.body || {});
+  hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']);
   hub.setJoinUrl(joinUrl());
   hub.broadcast(hub.statusMsg(), ['control']);
   res.json({ config: publicConfig(), net: netInfo() });
@@ -88,6 +91,63 @@ api.post('/upload/:kind', express.raw({ type: Object.keys(EXT), limit: '25mb' })
   fs.writeFileSync(path.join(DIRS.uploads, name), req.body);
   hub.updateSettings({ [kind]: `/uploads/${name}` });
   res.json({ url: `/uploads/${name}` });
+});
+
+/* ------------------------------------------------------------ offline mode */
+const offlineStatus = () => ({ ...offline.status(), translator: translatorState(), teach: teachJob });
+offline.onChange(() => hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']));
+let teachJob = null;
+
+api.get('/offline', (req, res) => res.json(offlineStatus()));
+api.post('/offline/download', (req, res) => {
+  const pack = String(req.body?.pack || '');
+  offline.download(pack).catch((e) => log('error', e.message));
+  res.json({ ok: true });
+});
+api.post('/offline/cancel', (req, res) => { offline.cancel(); res.json({ ok: true }); });
+api.delete('/offline/pack/:pack', (req, res) => { offline.remove(req.params.pack); res.json(offlineStatus()); });
+api.post('/offline/forget', (req, res) => { offline.memory.clearLearned(); offline.emit(); res.json(offlineStatus()); });
+
+/** Translate a line with the offline engine only, for every language on screen (to judge its quality). */
+api.post('/offline/try', async (req, res) => {
+  const text = String(req.body?.text || '').trim().slice(0, 500);
+  if (!text) return res.status(400).json({ error: 'Type a sentence first.' });
+  if (!offline.translationReady()) return res.status(400).json({ error: 'Download the offline translation pack first.' });
+  const from = hub.settings.sourceLang === 'auto' ? detectLang(text, 'en') : hub.settings.sourceLang;
+  const results = {};
+  for (const to of hub.settings.screenLangs) {
+    if (to === from) continue;
+    const t0 = Date.now();
+    try {
+      const mem = offline.memory.lookup(text, from, to);
+      results[to] = mem ? { text: mem.text, ms: 0, how: mem.origin } : { text: await offlineTranslate({ text, from, to, glossary: hub.settings.glossary }), ms: Date.now() - t0, how: 'offline' };
+    } catch (e) { results[to] = { error: e.message }; }
+  }
+  res.json({ from, results });
+});
+
+/** Teach the offline mode a prepared text (speech, agenda): Claude translates it once, it is remembered for offline use. */
+api.post('/offline/teach', (req, res) => {
+  if (teachJob && !teachJob.done) return res.status(409).json({ error: 'Already learning. Please wait.' });
+  const raw = String(req.body?.text || '').slice(0, 60000);
+  const sentences = [...new Set(raw.split(/(?<=[.!?。！？؟])\s+|\n+/).map((x) => x.trim()).filter((x) => x.length > 1))].slice(0, 400);
+  if (!sentences.length) return res.status(400).json({ error: 'Paste some text first.' });
+  const langs = Object.keys(hub.settings.phoneLangs.length ? Object.fromEntries([...hub.settings.phoneLangs, ...hub.settings.screenLangs].map((l) => [l, 1])) : {});
+  teachJob = { done: false, total: 0, finished: 0, sentences: sentences.length };
+  hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']);
+  let last = 0;
+  teach(sentences, langs, {
+    from: hub.settings.sourceLang, glossary: hub.settings.glossary, context: hub.settings.context,
+    onProgress: (d, t) => { teachJob.finished = d; teachJob.total = t; if (Date.now() - last > 400) { last = Date.now(); hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']); } },
+  }).then((r) => {
+    teachJob = { ...teachJob, done: true, failed: r.failed };
+    offline.memory.flush();
+    hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']);
+  }).catch((e) => {
+    teachJob = { ...teachJob, done: true, error: explain(e) };
+    hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']);
+  });
+  res.json({ ok: true, sentences: sentences.length });
 });
 
 registerLibrary(api, hub);
@@ -170,7 +230,7 @@ setInterval(() => {
   }
 }, 25000);
 
-function shutdown() { hub.stop(); hub.persistNow(); process.exit(0); }
+function shutdown() { hub.stop(); hub.persistNow(); offline.memory.flush(); process.exit(0); }
 export { shutdown, hub };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

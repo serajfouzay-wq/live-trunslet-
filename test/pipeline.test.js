@@ -85,7 +85,7 @@ after(() => {
   server?.kill();
   mockAnthropic?.close();
   mockDeepgram?.close();
-  fs.rmSync(dataDir, { recursive: true, force: true });
+  fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function client(role, lang) {
@@ -281,4 +281,33 @@ test('announcements are translated and reach screens and phones in their languag
   ctl.send({ type: 'announceClear' });
   await display.until((m) => m.type === 'announce' && m.announce === null);
   for (const c of [display, phone, ctl]) c.ws.close();
+});
+
+test('the offline mode learns from Claude and from taught text', async () => {
+  await api('PATCH', '/settings', { screenLangs: ['en', 'ar'], sourceLang: 'en', glossary: '' });
+  await api('PUT', '/config', { translationMode: 'auto' });
+  const ctl = client('control');
+  await ctl.ready;
+  const before = (await (await api('GET', '/offline')).json()).memory.learned;
+  ctl.send({ type: 'stt', text: 'The solar panels arrive next week.', final: true, speechFinal: true, lang: 'en' });
+  await ctl.until((m) => m.type === 'tr' && m.lang === 'ar' && m.done && m.text.includes('solar panels'));
+  await sleep(200);
+  const after = (await (await api('GET', '/offline')).json()).memory.learned;
+  assert.ok(after > before, 'Claude translations are remembered');
+
+  // teach a prepared text: Claude translates it once into every language
+  const r = await (await api('POST', '/offline/teach', { text: 'Our CEO will speak at noon. Then we have lunch together.' })).json();
+  assert.equal(r.sentences, 2);
+  let st;
+  for (let i = 0; i < 50; i += 1) { st = await (await api('GET', '/offline')).json(); if (st.teach?.done) break; await sleep(100); }
+  assert.ok(st.teach.done && !st.teach.error, JSON.stringify(st.teach));
+  assert.ok(st.memory.learned >= after + 2 * 6, 'every sentence in every other language');
+
+  // offline mode (no models installed in this test): remembered sentences still translate
+  await api('PUT', '/config', { translationMode: 'offline' });
+  ctl.send({ type: 'stt', text: 'Our CEO will speak at noon.', final: true, speechFinal: true, lang: 'en' });
+  const tr = await ctl.until((m) => m.type === 'tr' && m.lang === 'ar' && m.done && m.text.includes('noon'));
+  assert.equal(tr.text, '[Arabic] Our CEO will speak at noon.');
+  await api('PUT', '/config', { translationMode: 'auto' });
+  ctl.ws.close();
 });

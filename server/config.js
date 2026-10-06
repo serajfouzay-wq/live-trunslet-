@@ -18,9 +18,11 @@ const defaults = {
   deepgramKey: '',
   anthropicKey: '',
   model: 'claude-haiku-4-5',
-  sttEngine: 'deepgram', // deepgram | browser | demo
+  sttEngine: 'auto', // auto | deepgram | local | browser | demo
   port: 3000,
   publicHost: '', // override the LAN address shown in the QR code
+  translationMode: 'auto', // auto (Claude online, offline otherwise) | claude | offline
+  speechQuality: 'auto', // offline speech model: auto | fast | accurate
 };
 
 let cfg = { ...defaults };
@@ -32,7 +34,7 @@ if (process.env.PORT) cfg.port = Number(process.env.PORT);
 export const config = cfg;
 
 export function saveConfig(patch) {
-  const allowed = ['deepgramKey', 'anthropicKey', 'model', 'sttEngine', 'publicHost'];
+  const allowed = ['deepgramKey', 'anthropicKey', 'model', 'sttEngine', 'publicHost', 'translationMode', 'speechQuality'];
   for (const k of allowed) {
     if (typeof patch[k] === 'string') {
       // Empty string for a key means "leave unchanged" so the UI never has to echo secrets back.
@@ -58,5 +60,7 @@ export function publicConfig() {
     sttEngine: cfg.sttEngine,
     publicHost: cfg.publicHost,
     port: cfg.port,
+    translationMode: cfg.translationMode,
+    speechQuality: cfg.speechQuality,
   };
 }
