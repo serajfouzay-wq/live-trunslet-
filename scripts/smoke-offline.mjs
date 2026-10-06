@@ -10,8 +10,14 @@ const { createLocalStt } = await import('../server/offline/stt.js');
 const { offlineTranslate } = await import('../server/translate.js');
 
 const fail = (m) => { console.error(`SMOKE FAILED: ${m}`); process.exit(1); };
+let phase = 'start';
+const step = (p) => { phase = p; console.log(`[${new Date().toISOString().slice(11, 19)}] ${p}`); };
+setTimeout(() => fail(`timed out during: ${phase}`), 12 * 60 * 1000).unref();
+let lastPct = -1;
+offline.onChange((st) => { const j = st.job; if (!j) return; const pct = Math.floor((j.received / j.total) * 10) * 10; if (pct !== lastPct) { lastPct = pct; console.log(`   ${j.pack}: ${j.phase} ${pct}%`); } });
 for (const pack of ['translation', 'speech-fast']) {
   const t0 = Date.now();
+  step(`download ${pack}`);
   await offline.download(pack);
   const st = offline.status();
   if (!st.packs[pack].installed) fail(`${pack} not installed: ${st.job?.error}`);
@@ -20,12 +26,14 @@ for (const pack of ['translation', 'speech-fast']) {
 
 for (const [text, from, to] of [['Good evening everyone, and welcome to our conference.', 'en', 'ar'], ['Bienvenue à tous.', 'fr', 'zh'], ['Herkese iyi akşamlar.', 'tr', 'de']]) {
   const t0 = Date.now();
+  step(`translate ${from}->${to}`);
   const out = await offlineTranslate({ text, from, to, glossary: 'conference = ar: المؤتمر' });
   if (!out || out === text) fail(`translation ${from}->${to} gave "${out}"`);
   console.log(`${from}->${to} ${Date.now() - t0} ms: ${out}`);
 }
 
 // Speech: feed the recorded welcome sentence (16 kHz mono) in 100 ms chunks, like a microphone.
+step('speech recognition');
 const wav = fs.readFileSync(new URL('../test/fixtures/en-welcome.wav', import.meta.url));
 const pcm = wav.subarray(44);
 const text = await new Promise((resolve, reject) => {

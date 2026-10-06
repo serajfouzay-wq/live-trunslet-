@@ -27,6 +27,7 @@ jobs:
         continue-on-error: true
 
       - name: Offline engines work on Windows (download packs, translate, transcribe)
+        timeout-minutes: 15
         env:
           DATA_DIR: ${{ runner.temp }}\lt-smoke
         run: node scripts/smoke-offline.mjs
@@ -35,6 +36,7 @@ jobs:
         run: npm run dist
 
       - name: Packaged app starts and translates offline
+        timeout-minutes: 10
         shell: pwsh
         run: |
           $exe = Get-ChildItem -Path dist\win-unpacked -Filter "*.exe" | Where-Object { $_.Name -like "Live Translate*" } | Select-Object -First 1

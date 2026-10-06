@@ -86,7 +86,7 @@ export class OfflineTranslator {
         return new B({}).loadTranslationModel({ from, to });
       }
     }
-    e.tr = new BatchTranslator({ workers: 1, batchSize: 4, onerror: (err) => log('error', `offline translation engine: ${err?.message || err}`) }, new EngineBacking({}));
+    e.tr = new BatchTranslator({ workers: 1, batchSize: 4, onerror: (err) => { e.broken = err; log('error', `offline translation engine: ${err?.message || err}`); } }, new EngineBacking({}));
     this.engines.push(e);
     return e;
   }
@@ -97,19 +97,26 @@ export class OfflineTranslator {
     e.tr.delete().catch(() => {});
   }
 
+  /** One translation call, with a time limit: a broken engine must fail, never hang the event. */
+  #call(e, req) {
+    const limit = e.warm ? 15000 : 45000; // the first call also loads the model
+    return Promise.race([
+      e.tr.translate(req).then((r) => { e.warm = true; return r.target.text; }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`no answer within ${limit / 1000} s`)), limit)),
+    ]);
+  }
+
   async #hop(pair, text, html) {
     const [from, to] = pair.split('-');
+    const req = { from, to, text, html, qualityScores: false };
     const e = this.#engineFor(pair);
     try {
-      const r = await e.tr.translate({ from, to, text, html, qualityScores: false });
-      return r.target.text;
+      return await this.#call(e, req);
     } catch (err) {
-      // The engine may have run out of memory: start a fresh one and try once more.
+      // The engine may have run out of memory or got stuck: start a fresh one and try once more.
       log('warn', `offline ${pair} failed (${err?.message || err}); restarting engine`);
       this.#dropEngine(e);
-      const e2 = this.#engineFor(pair);
-      const r = await e2.tr.translate({ from, to, text, html, qualityScores: false });
-      return r.target.text;
+      return this.#call(this.#engineFor(pair), req);
     }
   }
 

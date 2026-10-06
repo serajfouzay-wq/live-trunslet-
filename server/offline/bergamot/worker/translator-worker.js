@@ -60,7 +60,8 @@ if (typeof self === 'undefined') {
         async fetch(url, options) {
             if (url.protocol === 'file:') {
                 const {readFile} = require(/* webpackIgnore: true */ 'node:fs/promises');
-                const buffer = await readFile(url.pathname);
+                const {fileURLToPath} = require(/* webpackIgnore: true */ 'node:url');
+                const buffer = await readFile(fileURLToPath(url)); // (patched: url.pathname breaks on Windows drive letters)
                 const blob = new Blob([buffer]);
                 return new Response(blob, {
                     status: 200,
@@ -76,7 +77,7 @@ if (typeof self === 'undefined') {
         }
 
         get location() {
-            return new URL(`file://${__filename}`);
+            return require(/* webpackIgnore: true */ 'node:url').pathToFileURL(__filename); // (patched for Windows paths)
         }
     }
 }
