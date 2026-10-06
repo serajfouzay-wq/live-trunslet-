@@ -43,6 +43,19 @@ export function protect(text, entries) {
   let out = text;
   for (const e of entries) {
     const latin = /^[\p{Script=Latin}\d\s.'’-]+$/u.test(e.term);
+    if (/^\p{Script=Arabic}/u.test(e.term)) {
+      // Arabic glues "and / with / for / like" onto the word: والمجلس, بالمجلس, للمجلس (ل + ال).
+      const body = e.term.replace(/^ال/, '');
+      const re = new RegExp(`(?<![\\p{L}])([وف]?(?:[بكل])?)(${reEsc(e.term)}|ل${reEsc(body)})(?![\\p{L}])`, 'gu');
+      out = out.replace(re, (m, pre, word) => {
+        const id = slots.length;
+        const lil = word !== e.term; // "لل…" = "ل" + "ال…"
+        slots.push({ id, token: token(id), entry: e, original: lil ? e.term : word });
+        const clitic = pre || (lil ? 'ل' : '');
+        return clitic ? `${clitic} ${token(id)}` : token(id);
+      });
+      continue;
+    }
     const re = new RegExp(latin ? `(?<![\\p{L}\\d])${reEsc(e.term)}(?![\\p{L}\\d])` : reEsc(e.term), latin ? 'giu' : 'gu');
     out = out.replace(re, (m) => {
       const id = slots.length;
@@ -68,5 +81,6 @@ export async function restore(translated, slots, to, translateTerm) {
     else wording = translateTerm ? await translateTerm(s.original) : s.original;
     out = out.replace(s.token, wording.replace(/\$/g, '$$$$'));
   }
-  return out.replace(/\s{2,}/g, ' ').trim();
+  out = out.replace(/\s{2,}/g, ' ').trim();
+  return out.charAt(0).toUpperCase() + out.slice(1); // "the Presidential Council met…" starts a sentence
 }

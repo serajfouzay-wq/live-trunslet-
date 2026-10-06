@@ -6,7 +6,7 @@ import { DIRS, config } from './config.js';
 import { LANGUAGES } from './languages.js';
 import { DEFAULT_SETTINGS, sanitize, saveSettings, viewerSettings } from './settings.js';
 import { detectLang } from './detect.js';
-import { translate, explain, isFatal, translatorState } from './translate.js';
+import { translate, explain, isFatal, translatorState, cleanArabic } from './translate.js';
 import { createLocalStt } from './offline/stt.js';
 import { offline } from './offline/manager.js';
 import { log } from './log.js';
@@ -266,7 +266,7 @@ export class Hub {
     send(); // the original appears at once; translations join as they arrive
     const langs = this.wantedLangs().filter((l) => l !== src);
     await Promise.all(langs.map(async (lang) => {
-      try { a.texts[lang] = await translate({ text, from: src, to: lang, glossary: this.settings.glossary, context: this.settings.context }); } catch (e) {
+      try { a.texts[lang] = await translate({ ...this.langOpts(), text, from: src, to: lang }); } catch (e) {
         log('warn', `announcement translation to ${lang} failed: ${e.message}`);
         if (e?.name === 'MissingKeyError') this.notify('error', explain(e));
       }
@@ -417,7 +417,7 @@ export class Hub {
       if (seg.trDone[lang]) continue;
       const key = `${seg.id}:${lang}`;
       if (this.inflight.has(key)) continue;
-      if (lang === seg.src) {
+      if (lang === seg.src && !(lang === 'ar' && this.settings.arabicDisplay === 'formal' && this.engine !== 'demo')) {
         seg.tr[lang] = seg.text;
         seg.trDone[lang] = true;
         this.emitTr(seg, lang, true);
@@ -434,13 +434,14 @@ export class Hub {
     const t0 = Date.now();
     seg.trErr = seg.trErr || {};
     try {
-      const out = await translate({
+      const formalArabic = lang === 'ar' && seg.src === 'ar';
+      const job = formalArabic ? cleanArabic : translate;
+      const out = await job({
+        ...this.langOpts(),
         text: seg.text,
         from: seg.src,
         to: lang,
         history,
-        glossary: this.settings.glossary,
-        context: this.settings.context,
         onDelta: (partial) => {
           seg.tr[lang] = partial;
           seg.trErr[lang] = false;
@@ -469,6 +470,11 @@ export class Hub {
       this.emitTr(seg, lang, false);
       this.notify('error', why);
     }
+  }
+
+  /** Settings every translation needs (event type, Arabic dialect, model choice). */
+  langOpts() {
+    return { eventType: this.settings.eventType, dialect: this.settings.arabicDialect, strongArabic: this.settings.arabicStrongModel, glossary: this.settings.glossary, context: this.settings.context };
   }
 
   /** Try again for every language of a sentence that failed. */
@@ -501,7 +507,7 @@ export class Hub {
       const idx = this.segments.length;
       const history = this.segments.slice(Math.max(0, idx - 2)).map((s) => ({ src: s.text, tr: s.tr[lang] }));
       translate({
-        text: part.text, from: part.lang, to: lang, history, glossary: this.settings.glossary, context: this.settings.context, signal: ctl.signal,
+        ...this.langOpts(), text: part.text, from: part.lang, to: lang, history, signal: ctl.signal,
         onDelta: (text) => { this.draft.text[lang] = text; this.emitDraft(lang); },
       }).catch((e) => { if (e?.name !== 'AbortError') log('warn', `draft translation to ${lang} failed: ${e.message}`); });
     }
@@ -618,6 +624,7 @@ export class Hub {
       key: config.deepgramKey,
       lang: LANGUAGES[auto ? 'en' : this.settings.sourceLang].dg,
       multi: auto,
+      dialect: this.settings.arabicDialect,
       diarize: this.settings.speakerMode === 'multi',
       onResult: (ev) => this.ingestStt(ev),
       onStatus: ({ state, detail }) => {

@@ -36,6 +36,10 @@ export const DEFAULT_SETTINGS = {
   sourceLang: 'en', // a language code or "auto"
   speakerMode: 'single', // single | multi
   fastMode: false, // translate while the speaker is still talking (more API calls, much lower delay)
+  eventType: 'government', // general | government (formal register, titles, protocol)
+  arabicDialect: 'ly', // ly (Libyan) | msa (formal Arabic) | other
+  arabicDisplay: 'formal', // spoken (exact recognised words) | formal (cleaned into formal Arabic)
+  arabicStrongModel: true, // use the stronger Claude model for Arabic speech
   glossary: '',
   context: '',
 };
@@ -77,6 +81,10 @@ const RULES = {
   sourceLang: (v) => (v === 'auto' || isLang(v) ? v : undefined),
   speakerMode: (v) => oneOf(v, ['single', 'multi']),
   fastMode: bool,
+  eventType: (v) => oneOf(v, ['general', 'government']),
+  arabicDialect: (v) => oneOf(v, ['ly', 'msa', 'other']),
+  arabicDisplay: (v) => oneOf(v, ['spoken', 'formal']),
+  arabicStrongModel: bool,
   glossary: (v) => str(v, 8000),
   context: (v) => str(v, 1000),
 };

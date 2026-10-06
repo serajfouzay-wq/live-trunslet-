@@ -120,7 +120,7 @@ api.post('/offline/try', async (req, res) => {
     const t0 = Date.now();
     try {
       const mem = offline.memory.lookup(text, from, to);
-      results[to] = mem ? { text: mem.text, ms: 0, how: mem.origin } : { text: await offlineTranslate({ text, from, to, glossary: hub.settings.glossary }), ms: Date.now() - t0, how: 'offline' };
+      results[to] = mem ? { text: mem.text, ms: 0, how: mem.origin } : { text: await offlineTranslate({ ...hub.langOpts(), text, from, to }), ms: Date.now() - t0, how: 'offline' };
     } catch (e) { results[to] = { error: e.message }; }
   }
   res.json({ from, results });
@@ -137,7 +137,7 @@ api.post('/offline/teach', (req, res) => {
   hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']);
   let last = 0;
   teach(sentences, langs, {
-    from: hub.settings.sourceLang, glossary: hub.settings.glossary, context: hub.settings.context,
+    from: hub.settings.sourceLang, ...hub.langOpts(),
     onProgress: (d, t) => { teachJob.finished = d; teachJob.total = t; if (Date.now() - last > 400) { last = Date.now(); hub.broadcast({ type: 'offline', ...offlineStatus() }, ['control']); } },
   }).then((r) => {
     teachJob = { ...teachJob, done: true, failed: r.failed };

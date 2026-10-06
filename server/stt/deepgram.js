@@ -2,23 +2,31 @@ import WebSocket from 'ws';
 
 // Streaming speech-to-text through Deepgram. The browser captures the mic and
 // sends 16 kHz mono PCM to us; we relay it and turn results into hub events.
-const MODELS = ['nova-3', 'nova-2'];
+// Model/language pairs to try in order; a 400 answer means "not supported", so the next pair is tried.
+function candidatesFor(lang, multi, dialect) {
+  if (multi) return [['nova-3', 'multi'], ['nova-2', 'multi']];
+  const list = [];
+  if (lang === 'ar' && dialect === 'ly') list.push(['nova-3', 'ar-LY']); // Libyan Arabic, if Deepgram offers it
+  list.push(['nova-3', lang], ['nova-2', lang]);
+  return list;
+}
 const BASE_URL = process.env.DEEPGRAM_URL || 'wss://api.deepgram.com/v1/listen'; // overridable for tests
 
-export function createDeepgram({ key, lang, multi, diarize, onResult, onStatus }) {
+export function createDeepgram({ key, lang, multi, dialect, diarize, onResult, onStatus }) {
+  const candidates = candidatesFor(lang, multi, dialect);
   let ws = null;
   let closed = false;
   let ready = false;
-  let modelIdx = 0;
+  let idx = 0;
   let retries = 0;
   const pending = [];
   let keepAlive = null;
   let lastAudio = Date.now();
 
-  function url(model) {
+  function url([model, language]) {
     const q = new URLSearchParams({
       model,
-      language: multi ? 'multi' : lang,
+      language,
       encoding: 'linear16',
       sample_rate: '16000',
       channels: '1',
@@ -35,9 +43,10 @@ export function createDeepgram({ key, lang, multi, diarize, onResult, onStatus }
 
   function connect() {
     if (closed) return;
-    const model = MODELS[modelIdx];
+    const pair = candidates[idx];
+    const model = `${pair[0]} ${pair[1]}`;
     onStatus?.({ state: 'connecting', detail: model });
-    ws = new WebSocket(url(model), { headers: { Authorization: `Token ${key}` } });
+    ws = new WebSocket(url(pair), { headers: { Authorization: `Token ${key}` } });
 
     ws.on('open', () => {
       ready = true;
@@ -53,8 +62,8 @@ export function createDeepgram({ key, lang, multi, diarize, onResult, onStatus }
     ws.on('unexpected-response', (_req, res) => {
       // 400 usually means this model does not support the chosen language: try the next one.
       ready = false;
-      if ((res.statusCode === 400 || res.statusCode === 404) && modelIdx < MODELS.length - 1) {
-        modelIdx += 1;
+      if ((res.statusCode === 400 || res.statusCode === 404) && idx < candidates.length - 1) {
+        idx += 1;
         return connect();
       }
       const msg = res.statusCode === 401 || res.statusCode === 403

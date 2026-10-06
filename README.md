@@ -57,13 +57,13 @@ Phones and the laptop must be on the same Wi-Fi (or the laptop's hotspot). Tick 
 
 ## Offline mode (no internet, no cost)
 
-The app can hear and translate **on the laptop itself**. In **Settings → Offline mode** press **Download everything** once, while you have internet (about 1.2 GB):
+The app can hear and translate **on the laptop itself**. In **Settings → Offline mode** press **Download everything** once, while you have internet (about 1.15 GB):
 
 | Pack | What | Size |
 | --- | --- | --- |
 | Translation | Mozilla's Firefox Translations models (the same offline engine Firefox uses), all 8 languages | 375 MB |
 | Speech · fast | Whisper *base*: text about 1 s after each sentence | 208 MB |
-| Speech · accurate | Whisper *small*: better (especially Arabic and Italian), a few seconds slower | 640 MB |
+| Speech · accurate | Whisper *large-v3-turbo*: much better for Arabic and Italian, a few seconds slower | 564 MB |
 
 With the default **Automatic** settings it uses Deepgram and Claude when the internet works, and switches by itself to the offline engines when it doesn't (and back again when the internet returns). You can also choose *Always offline* to never use the internet or pay anything.
 
@@ -74,6 +74,19 @@ With the default **Automatic** settings it uses Deepgram and Claude when the int
 - **Glossary** works offline too: names stay exactly as written, and your required wordings are used.
 
 Honest note: the offline translation is good but below Claude for complex or idiomatic sentences, and offline speech recognition is weaker for Arabic than Deepgram. Retraining the neural models themselves needs large datasets and GPUs; the app instead improves through the memory above, which is where events repeat themselves anyway.
+
+## Arabic, Libyan dialect and government events
+
+Set this up in **Glossary → Arabic and official events**. The defaults are Libyan speakers at an official event.
+
+- **Online (Claude)**: Claude is told the speakers use Libyan Arabic (هلبا، نبي، توا، باهي، شن، ما…ش), the event is official, and that titles and protocol are rendered formally (معالي الوزير → His Excellency the Minister). Arabic speech uses the stronger Claude model; you can switch that off.
+- **Arabic on screen**: *Cleaned into formal Arabic* turns spoken Libyan into clear فصحى for Arabic readers. *Exactly as spoken* shows the recognised words.
+- **Speech**: Deepgram is asked for Libyan Arabic (ar-LY) first and falls back to general Arabic if that is not offered.
+- **Offline**: Libyan words and grammar are rewritten into formal Arabic before the offline translator sees them. Measured on 20 new Libyan sentences (Arabic → English, chrF score out of 100): **56 → 78**, nearly the formal-Arabic ceiling of 79. Formal Arabic passes through unchanged.
+- **Phrasebook**: protocol lines (Bismillah, welcoming delegations, the national anthem, signing ceremonies, adjourning) in all 8 languages, and common Libyan ways of saying them (يعطيكم الصحة، مرحبتين بيكم…).
+- **Glossary preset**: the **Add Libyan institutions and cities** button fills in the Presidential Council, the Government of National Unity, the House of Representatives, the Central Bank, major cities and more, with official names in every language. Arabic terms are found even with و / ب / لل attached.
+
+Honest note: the offline improvements were measured on written test sentences. Speech recognition of real Libyan voices has not been measured yet. Before an important event, test with a recording of a real speaker, and use *Teach the offline mode* with the speeches and the agenda.
 
 ## Faster mode
 

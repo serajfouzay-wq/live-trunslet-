@@ -53,6 +53,7 @@ before(async () => {
       dgConnections.push({ model: q.get('model'), language: q.get('language'), auth: info.req.headers.authorization, diarize: q.get('diarize') });
       // Pretend nova-3 does not know Chinese so the fallback to nova-2 is exercised.
       if (q.get('model') === 'nova-3' && q.get('language') === 'zh') return cb(false, 400, 'unsupported');
+      if (q.get('language') === 'ar-LY') return cb(false, 400, 'unsupported');
       cb(true);
     },
   });
@@ -309,5 +310,18 @@ test('the offline mode learns from Claude and from taught text', async () => {
   const tr = await ctl.until((m) => m.type === 'tr' && m.lang === 'ar' && m.done && m.text.includes('noon'));
   assert.equal(tr.text, '[Arabic] Our CEO will speak at noon.');
   await api('PUT', '/config', { translationMode: 'auto' });
+  ctl.ws.close();
+});
+
+test('Libyan Arabic: Deepgram is asked for ar-LY first and falls back to Arabic if not offered', async () => {
+  await api('PATCH', '/settings', { arabicDialect: 'ly' });
+  const ctl = client('control');
+  await ctl.ready;
+  ctl.send({ type: 'source', lang: 'ar', speakerMode: 'single' });
+  ctl.send({ type: 'start', engine: 'deepgram' });
+  await ctl.until((m) => m.type === 'status' && m.stt?.state === 'connected');
+  const tried = dgConnections.filter((c) => c.language?.startsWith('ar')).map((c) => `${c.model}/${c.language}`);
+  assert.deepEqual(tried.slice(0, 2), ['nova-3/ar-LY', 'nova-3/ar']);
+  ctl.send({ type: 'stop' });
   ctl.ws.close();
 });

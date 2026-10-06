@@ -1124,3 +1124,37 @@ $('#try-go').onclick = async () => {
     }
   } catch (e) { out.textContent = e.message; }
 };
+
+/* Glossary preset: Libyan state institutions and cities, with the official wording in every language */
+const LIBYA_TERMS = `# Libya · institutions and cities
+المجلس الرئاسي = en: the Presidential Council; fr: Conseil présidentiel; es: Consejo Presidencial; de: Präsidialrat; it: Consiglio presidenziale; tr: Başkanlık Konseyi; zh: 总统委员会
+حكومة الوحدة الوطنية = en: the Government of National Unity; fr: Gouvernement d'unité nationale; es: Gobierno de Unidad Nacional; de: Regierung der Nationalen Einheit; it: Governo di Unità Nazionale; tr: Ulusal Birlik Hükümeti; zh: 民族团结政府
+مجلس النواب = en: the House of Representatives; fr: Chambre des représentants; es: Cámara de Representantes; de: Repräsentantenhaus; it: Camera dei Rappresentanti; tr: Temsilciler Meclisi; zh: 国民代表大会
+المجلس الأعلى للدولة = en: the High Council of State; fr: Haut Conseil d'État; es: Consejo Superior de Estado; de: Hoher Staatsrat; it: Alto Consiglio di Stato; tr: Yüksek Devlet Konseyi; zh: 最高国家委员会
+المفوضية الوطنية العليا للانتخابات = en: the High National Elections Commission; fr: Haute Commission électorale nationale; es: Alta Comisión Nacional Electoral; de: Hohe Nationale Wahlkommission; it: Alta Commissione Elettorale Nazionale; tr: Yüksek Ulusal Seçim Komisyonu; zh: 国家最高选举委员会
+مصرف ليبيا المركزي = en: the Central Bank of Libya; fr: Banque centrale de Libye; es: Banco Central de Libia; de: Zentralbank von Libyen; it: Banca Centrale della Libia; tr: Libya Merkez Bankası; zh: 利比亚中央银行
+المؤسسة الوطنية للنفط = en: the National Oil Corporation; fr: Compagnie nationale du pétrole; es: Corporación Nacional del Petróleo; de: Nationale Ölgesellschaft; it: National Oil Corporation; tr: Ulusal Petrol Kurumu; zh: 国家石油公司
+وزارة الخارجية والتعاون الدولي = en: the Ministry of Foreign Affairs and International Cooperation; fr: ministère des Affaires étrangères et de la Coopération internationale; es: Ministerio de Asuntos Exteriores y Cooperación Internacional; de: Ministerium für Auswärtige Angelegenheiten und Internationale Zusammenarbeit; it: Ministero degli Affari Esteri e della Cooperazione Internazionale; tr: Dışişleri ve Uluslararası İşbirliği Bakanlığı; zh: 外交与国际合作部
+بعثة الأمم المتحدة للدعم في ليبيا = en: the United Nations Support Mission in Libya; fr: Mission d'appui des Nations unies en Libye; es: Misión de Apoyo de las Naciones Unidas en Libia; de: Unterstützungsmission der Vereinten Nationen in Libyen; it: Missione di supporto delle Nazioni Unite in Libia; tr: Birleşmiş Milletler Libya Destek Misyonu; zh: 联合国利比亚支助团
+جامعة الدول العربية = en: the Arab League; fr: Ligue arabe; es: Liga Árabe; de: Arabische Liga; it: Lega araba; tr: Arap Birliği; zh: 阿拉伯国家联盟
+طرابلس = en: Tripoli; fr: Tripoli; es: Trípoli; de: Tripolis; it: Tripoli; tr: Trablus; zh: 的黎波里
+بنغازي = en: Benghazi; fr: Benghazi; es: Bengasi; de: Bengasi; it: Bengasi; tr: Bingazi; zh: 班加西
+مصراتة = en: Misrata; fr: Misrata; es: Misrata; de: Misrata; it: Misurata; tr: Misrata; zh: 米苏拉塔
+سبها = en: Sabha; fr: Sebha; es: Sabha; de: Sabha; it: Sebha; tr: Sebha; zh: 塞卜哈
+درنة = en: Derna; fr: Derna; es: Derna; de: Darna; it: Derna; tr: Derne; zh: 德尔纳
+طبرق = en: Tobruk; fr: Tobrouk; es: Tobruk; de: Tobruk; it: Tobruch; tr: Tobruk; zh: 图卜鲁格
+غدامس = en: Ghadames; fr: Ghadamès; es: Gadamés; de: Ghadames; it: Ghadames; tr: Gadamis; zh: 古达米斯
+معالي الوزير = en: His Excellency the Minister; fr: Son Excellence le Ministre; es: Su Excelencia el Ministro; de: Seine Exzellenz der Minister; it: Sua Eccellenza il Ministro; tr: Sayın Bakan; zh: 部长阁下
+سعادة السفير = en: His Excellency the Ambassador; fr: Son Excellence l'Ambassadeur; es: Su Excelencia el Embajador; de: Seine Exzellenz der Botschafter; it: Sua Eccellenza l'Ambasciatore; tr: Sayın Büyükelçi; zh: 大使阁下`;
+$('#preset-libya').onclick = () => {
+  const cur = store.settings?.glossary || '';
+  const have = new Set(cur.split('\n').map((l) => l.split('=')[0].trim()));
+  const add = LIBYA_TERMS.split('\n').filter((l) => !have.has(l.split('=')[0].trim()));
+  if (!add.length) return toast('These terms are already in the glossary');
+  const glossary = (cur.trim() ? `${cur.trim()}\n` : '') + add.join('\n');
+  if (glossary.length > 8000) return toast('The glossary is too long to add these terms', 'error');
+  patchSettings({ glossary }, true);
+  store.settings.glossary = glossary;
+  renderSettings();
+  toast(`Added ${add.length - (add[0].startsWith('#') ? 1 : 0)} Libyan terms`);
+};

@@ -22,7 +22,7 @@ const SPEECH_DIR = path.join(MODELS, 'speech');
 export const PACKS = {
   translation: { label: 'Translation (all 8 languages)', bytes: catalog.totalBytes },
   'speech-fast': { label: 'Speech recognition · fast', bytes: catalog.speech['whisper-base'].size + catalog.speech.vad.size },
-  'speech-accurate': { label: 'Speech recognition · accurate', bytes: catalog.speech['whisper-small'].size + catalog.speech.vad.size },
+  'speech-accurate': { label: 'Speech recognition · accurate (Whisper turbo, best for Arabic)', bytes: catalog.speech['whisper-turbo'].size + catalog.speech.vad.size },
 };
 
 const whisperDir = (size) => path.join(SPEECH_DIR, `whisper-${size}`);
@@ -52,10 +52,9 @@ class OfflineManager {
   speechReady(size) { return speechReady(size); }
   /** Best installed speech model for a language ("auto" quality: accurate for Arabic & Italian, fast otherwise). */
   speechSizeFor(lang, quality = 'auto') {
-    const want = quality === 'accurate' ? 'small' : quality === 'fast' ? 'base' : (['ar', 'it', 'auto'].includes(lang) ? 'small' : 'base');
-    if (speechReady(want)) return want;
-    const other = want === 'small' ? 'base' : 'small';
-    return speechReady(other) ? other : null;
+    const accurate = quality === 'accurate' || (quality !== 'fast' && ['ar', 'it', 'auto'].includes(lang));
+    const order = accurate ? ['turbo', 'small', 'base'] : ['base', 'turbo', 'small']; // 'small' = installs from older versions
+    return order.find((size) => speechReady(size)) || null;
   }
 
   status() {
@@ -63,7 +62,7 @@ class OfflineManager {
       packs: {
         translation: { ...PACKS.translation, installed: this.translationReady() },
         'speech-fast': { ...PACKS['speech-fast'], installed: speechReady('base') },
-        'speech-accurate': { ...PACKS['speech-accurate'], installed: speechReady('small') },
+        'speech-accurate': { ...PACKS['speech-accurate'], installed: speechReady('turbo') || speechReady('small') },
       },
       job: this.job && { pack: this.job.pack, received: this.job.received, total: this.job.total, phase: this.job.phase, error: this.job.error },
       memory: this.memory.stats(),
@@ -81,7 +80,7 @@ class OfflineManager {
     try {
       if (pack === 'translation') await this.#downloadTranslation(ctl.signal, tick);
       else {
-        const size = pack === 'speech-fast' ? 'base' : 'small';
+        const size = pack === 'speech-fast' ? 'base' : 'turbo';
         await this.#downloadVad(ctl.signal, tick);
         await this.#downloadWhisper(size, ctl.signal, tick);
       }
@@ -150,7 +149,7 @@ class OfflineManager {
   remove(pack) {
     if (pack === 'translation') fs.rmSync(MT_DIR, { recursive: true, force: true });
     if (pack === 'speech-fast') fs.rmSync(whisperDir('base'), { recursive: true, force: true });
-    if (pack === 'speech-accurate') fs.rmSync(whisperDir('small'), { recursive: true, force: true });
+    if (pack === 'speech-accurate') { fs.rmSync(whisperDir('turbo'), { recursive: true, force: true }); fs.rmSync(whisperDir('small'), { recursive: true, force: true }); }
     this.emit();
   }
 }

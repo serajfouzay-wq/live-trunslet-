@@ -5,6 +5,7 @@ import { DEMO_TRANSLATIONS } from './demo.js';
 import { offline } from './offline/manager.js';
 import { parseGlossary, protect, restore, intact } from './offline/glossary.js';
 import { log } from './log.js';
+import { normalizeLibyan } from './offline/arabic.js';
 
 let client = null;
 let clientKey = '';
@@ -30,6 +31,38 @@ Rules:
 - Keep names, brands and numbers correct. Follow the glossary exactly when a term appears.
 - If the text is already in the target language, return it unchanged.
 - The text is a fragment of live speech and may be imperfect (it may stop mid-sentence); translate it as it is.`;
+
+const GOVERNMENT = `This is an official government event. Use a formal, respectful register suitable for official communication.
+- Render official titles, honorifics and institution names correctly and consistently (for example معالي / سعادة = Your Excellency, وزير = Minister, عميد البلدية = Mayor, رئيس الوزراء = Prime Minister).
+- Translate religious and ceremonial formulas (بسم الله الرحمن الرحيم, السلام عليكم ورحمة الله وبركاته, حفظ الله ليبيا) with their conventional equivalents.
+- Translate exactly what was said: never add commentary, opinions or political judgement.`;
+
+const LIBYAN = `The Arabic comes from live speech recognition. Speakers often use Libyan Arabic mixed with Modern Standard Arabic. Common Libyan words:
+توا / تو = now; هلبا = a lot, very; باهي = good, okay; نبي = I want; نبو = we want; يبي = he wants; شن / شنو = what; علاش = why; وين = where; كيفاش = how;
+امتاع / متاع = of, belonging to; بـ before a verb = future (بنبدو = we will start, بيكون = it will be); ما...ش = negation (مانبوش = we don't want, ما فيش = there is no);
+قاعد + verb = ongoing action (قاعدين نخدمو = we are working); نخدم = I work; زادة = also; ديما = always; غدوة = tomorrow; اللي = who / which / that;
+حنا = we; هكي = like this; شوية = a little; باش = in order to; يعطيك الصحة = thank you; مرحبتين = welcome; درتو = you did.
+Speech recognition may contain errors (wrong or split words): infer the most likely intended meaning from context and translate that meaning, not word by word.`;
+
+/** The system prompt for this request (stable per event setup, so it caches well). */
+function systemFor({ from, eventType, dialect }) {
+  let sys = SYSTEM;
+  if (eventType === 'government') sys += `\n\n${GOVERNMENT}`;
+  if (from === 'ar' && dialect !== 'msa') sys += `\n\n${LIBYAN}`;
+  return sys;
+}
+
+/** Claude model for this sentence: Arabic speech can use the stronger model (dialect needs more nuance). */
+function modelFor({ from, strongArabic }) {
+  if (from === 'ar' && strongArabic !== false && /haiku/.test(config.model)) return 'claude-sonnet-5-5';
+  return config.model;
+}
+
+const CLEAN_SYSTEM = `You clean up live speech-recognition transcripts of Arabic speech for display on a screen at an official event.
+Rewrite the text in clear, correct Modern Standard Arabic: fix recognition errors, change Libyan dialect words into their standard equivalents, and add correct punctuation.
+Keep every name, number and the speaker's meaning and order. Do not summarise, add, or remove content. Output only the rewritten Arabic text.
+
+${LIBYAN}`;
 
 function buildUser({ text, from, to, history, glossary, context }) {
   const parts = [];
@@ -100,17 +133,18 @@ export function translatorState() {
   return { mode, engine, offlineReady, internetLost: Date.now() < offlineUntil, lastEngine };
 }
 
-export async function offlineTranslate({ text, from, to, glossary, onDelta }) {
+export async function offlineTranslate({ text, from, to, glossary, onDelta, dialect }) {
   const entries = parseGlossary(glossary);
+  const prep = (t) => (from === 'ar' && dialect !== 'msa' ? normalizeLibyan(t) : t); // Libyan words -> formal Arabic
   let out = null;
   if (entries.length) {
     const { text: masked, slots } = protect(text, entries);
     if (slots.length) {
-      const raw = await offline.mt.translate(masked, from, to);
+      const raw = await offline.mt.translate(prep(masked), from, to);
       if (intact(raw, slots)) out = await restore(raw, slots, to, (term) => offline.mt.translate(term, from, to));
     }
   }
-  if (out === null) out = await offline.mt.translate(text, from, to);
+  if (out === null) out = await offline.mt.translate(prep(text), from, to);
   onDelta?.(out);
   return out;
 }
@@ -123,7 +157,7 @@ export async function translate(opts) {
   const { text, from, to, signal } = opts;
   if (from === to) return text;
 
-  const remembered = offline.memory.lookup(text, from, to);
+  const remembered = offline.memory.lookup(text, from, to) || (from === 'ar' && opts.dialect !== 'msa' ? offline.memory.lookup(normalizeLibyan(text), from, to) : null);
   if (remembered) { lastEngine = 'memory'; opts.onDelta?.(remembered.text); return remembered.text; }
 
   const { mode } = translatorState();
@@ -139,6 +173,7 @@ export async function translate(opts) {
     if (!signal && out) offline.memory.add(from, to, text, out, 'claude'); // the offline mode learns from Claude
     return out;
   } catch (e) {
+    if (e?.name === 'RefusalError' && canOffline) { lastEngine = 'offline'; return offlineTranslate(opts); }
     if (e?.name !== 'AbortError' && mode !== 'claude' && canOffline && isNetworkError(e)) {
       if (Date.now() >= offlineUntil) log('warn', 'Claude unreachable: translating offline for now');
       offlineUntil = Date.now() + 45000;
@@ -149,38 +184,76 @@ export async function translate(opts) {
   }
 }
 
-async function claudeTranslate(opts) {
-  const { text, to, onDelta, signal } = opts;
+let fallbacksOk = true; // server-side refusal fallback (beta); switched off if the API does not accept it
+
+async function claude({ system, user, model, maxTokens, onDelta, signal }) {
   const c = getClient();
   if (!c) throw new MissingKeyError();
   await takeSlot(signal);
   try {
-    const isHaiku = /haiku/.test(config.model);
-    const params = {
-      model: config.model,
-      max_tokens: Math.min(4000, Math.max(300, text.length * 6)),
-      system: SYSTEM,
-      messages: [{ role: 'user', content: buildUser(opts) }],
-      // Newer models think by default; keep interpretation snappy.
-      ...(isHaiku ? {} : { output_config: { effort: 'low' } }),
-    };
+    const isHaiku = /haiku/.test(model);
+    const extra = isHaiku ? {} : { output_config: { effort: 'low' } };
+    const useFallbacks = fallbacksOk && /sonnet-5-5|opus-5-5/.test(model);
+    const params = { model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }], ...extra, ...(useFallbacks ? { fallbacks: 'default' } : {}) };
+    const reqOpts = { signal, timeout: 25000, maxRetries: 1, ...(useFallbacks ? { headers: { 'anthropic-beta': 'server-side-fallback-2026-07-01' } } : {}) };
     let acc = '';
-    const stream = c.messages.stream(params, { signal, timeout: 25000, maxRetries: 1 });
-    stream.on('text', (delta) => {
-      acc += delta;
-      onDelta?.(acc);
-    });
-    const final = await stream.finalMessage();
+    let final;
+    try {
+      const stream = c.messages.stream(params, reqOpts);
+      stream.on('text', (delta) => { acc += delta; onDelta?.(acc); });
+      final = await stream.finalMessage();
+    } catch (e) {
+      if (useFallbacks && e?.status === 400 && /fallback/i.test(e?.message || '')) {
+        fallbacksOk = false;
+        log('warn', 'refusal fallback not accepted by the API; continuing without it');
+        delete params.fallbacks;
+        acc = '';
+        const stream = c.messages.stream(params, { signal, timeout: 25000, maxRetries: 1 });
+        stream.on('text', (delta) => { acc += delta; onDelta?.(acc); });
+        final = await stream.finalMessage();
+      } else throw e;
+    }
+    if (final.stop_reason === 'refusal') throw Object.assign(new Error('Claude declined to translate this sentence'), { name: 'RefusalError' });
     const out = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-    void to;
     return out || acc.trim();
   } finally {
     freeSlot();
   }
 }
 
+async function claudeTranslate(opts) {
+  const { text } = opts;
+  return claude({
+    system: systemFor(opts),
+    user: buildUser(opts),
+    model: modelFor(opts),
+    maxTokens: Math.min(4000, Math.max(300, text.length * 6)),
+    onDelta: opts.onDelta,
+    signal: opts.signal,
+  });
+}
+
+/**
+ * Arabic speech shown on screen as clean formal Arabic (fixes recognition errors and dialect words).
+ * Online: Claude rewrites it. Offline: the Libyan normalizer.
+ */
+export async function cleanArabic(opts) {
+  const { text, onDelta } = opts;
+  const { engine } = translatorState();
+  if (engine === 'claude') {
+    try {
+      return await claude({ system: CLEAN_SYSTEM, user: `<text>${text}</text>`, model: modelFor({ ...opts, from: 'ar' }), maxTokens: Math.min(3000, Math.max(200, text.length * 4)), onDelta, signal: opts.signal });
+    } catch (e) {
+      if (!isNetworkError(e) && e?.name !== 'RefusalError') throw e;
+    }
+  }
+  const out = normalizeLibyan(text);
+  onDelta?.(out);
+  return out;
+}
+
 /** Ask Claude to translate prepared text (a speech, an agenda) into every language, and remember it for offline use. */
-export async function teach(sentences, langs, { from: fixedFrom, glossary, context, onProgress } = {}) {
+export async function teach(sentences, langs, { from: fixedFrom, onProgress, ...langOpts } = {}) {
   if (!getClient()) throw new MissingKeyError();
   const { detectLang } = await import('./detect.js');
   const jobs = [];
@@ -191,7 +264,7 @@ export async function teach(sentences, langs, { from: fixedFrom, glossary, conte
   let done = 0, failed = 0;
   await Promise.all(jobs.map(async (j) => {
     try {
-      const out = await claudeTranslate({ text: j.s, from: j.from, to: j.to, glossary, context });
+      const out = await claudeTranslate({ ...langOpts, text: j.s, from: j.from, to: j.to });
       offline.memory.add(j.from, j.to, j.s, out, 'taught');
     } catch { failed += 1; }
     done += 1;

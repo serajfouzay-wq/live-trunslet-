@@ -83,7 +83,12 @@ export class TranslationMemory {
   #loadPhrasebook(file) {
     try {
       const { entries } = JSON.parse(fs.readFileSync(file, 'utf8'));
-      for (const e of entries) for (const [from, src] of Object.entries(e)) for (const [to, tr] of Object.entries(e)) if (from !== to) this.#put(from, to, src, tr, 'phrasebook');
+      for (const e of entries) {
+        const { aliases = {}, ...langs } = e;
+        for (const [from, src] of Object.entries(langs)) for (const [to, tr] of Object.entries(langs)) if (from !== to) this.#put(from, to, src, tr, 'phrasebook');
+        // other ways of saying it (e.g. Libyan Arabic): recognised as source only, never produced as output
+        for (const [from, list] of Object.entries(aliases)) for (const src of list) for (const [to, tr] of Object.entries(langs)) if (to !== from) this.#put(from, to, src, tr, 'phrasebook');
+      }
     } catch { /* optional */ }
   }
 

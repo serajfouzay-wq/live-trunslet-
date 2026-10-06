@@ -1,5 +1,5 @@
 {
- "note": "Hand-written translations of common event sentences. Used offline before machine translation.",
+ "note": "Hand-written translations of common event and official/government sentences. Used before machine translation. \"aliases\" are other ways to say it (e.g. Libyan Arabic) that are recognised as source only.",
  "entries": [
   {
    "en": "Good morning everyone.",
@@ -39,7 +39,15 @@
    "de": "Herzlich willkommen.",
    "es": "Bienvenidos a todos.",
    "tr": "Hepiniz hoş geldiniz.",
-   "it": "Benvenuti a tutti."
+   "it": "Benvenuti a tutti.",
+   "aliases": {
+    "ar": [
+     "مرحبتين بيكم",
+     "مرحبتين بيكم يا جماعة",
+     "مرحبا بيكم كلكم",
+     "مرحبتين بيكم جميعًا"
+    ]
+   }
   },
   {
    "en": "Thank you very much.",
@@ -49,7 +57,16 @@
    "de": "Vielen Dank.",
    "es": "Muchas gracias.",
    "tr": "Çok teşekkür ederim.",
-   "it": "Grazie mille."
+   "it": "Grazie mille.",
+   "aliases": {
+    "ar": [
+     "شكرًا هلبا",
+     "يعطيكم الصحة",
+     "يعيشكم",
+     "يعطيك الصحة",
+     "تسلمو"
+    ]
+   }
   },
   {
    "en": "Thank you all for coming.",
@@ -59,7 +76,14 @@
    "de": "Vielen Dank an alle fürs Kommen.",
    "es": "Gracias a todos por venir.",
    "tr": "Geldiğiniz için hepinize teşekkür ederim.",
-   "it": "Grazie a tutti per essere venuti."
+   "it": "Grazie a tutti per essere venuti.",
+   "aliases": {
+    "ar": [
+     "يعطيكم الصحة على الحضور",
+     "شكرًا هلبا على الحضور",
+     "مشكورين على الحضور"
+    ]
+   }
   },
   {
    "en": "Please take your seats.",
@@ -69,7 +93,14 @@
    "de": "Bitte nehmen Sie Platz.",
    "es": "Por favor, tomen asiento.",
    "tr": "Lütfen yerlerinize oturun.",
-   "it": "Prego, prendete posto."
+   "it": "Prego, prendete posto.",
+   "aliases": {
+    "ar": [
+     "تفضلو اقعدو",
+     "اقعدو في بلايصكم",
+     "تفضلو ارتاحو"
+    ]
+   }
   },
   {
    "en": "Please silence your phones.",
@@ -89,7 +120,13 @@
    "de": "Wir machen jetzt eine kurze Pause.",
    "es": "Ahora haremos una breve pausa.",
    "tr": "Şimdi kısa bir ara vereceğiz.",
-   "it": "Ora faremo una breve pausa."
+   "it": "Ora faremo una breve pausa.",
+   "aliases": {
+    "ar": [
+     "توا بناخذو استراحة صغيرة",
+     "توا بناخذو شوية استراحة"
+    ]
+   }
   },
   {
    "en": "Coffee break.",
@@ -139,7 +176,15 @@
    "de": "Lassen Sie uns beginnen.",
    "es": "Comencemos.",
    "tr": "Başlayalım.",
-   "it": "Cominciamo."
+   "it": "Cominciamo.",
+   "aliases": {
+    "ar": [
+     "يلا نبدو",
+     "خلونا نبدو",
+     "توا نبدو",
+     "خلينا نبدو"
+    ]
+   }
   },
   {
    "en": "Ladies and gentlemen.",
@@ -189,7 +234,14 @@
    "de": "Gibt es Fragen?",
    "es": "¿Hay alguna pregunta?",
    "tr": "Herhangi bir sorunuz var mı?",
-   "it": "Ci sono domande?"
+   "it": "Ci sono domande?",
+   "aliases": {
+    "ar": [
+     "فيه أسئلة؟",
+     "حد عنده سؤال؟",
+     "فيه حد عنده سؤال؟"
+    ]
+   }
   },
   {
    "en": "We now have time for questions.",
@@ -229,7 +281,14 @@
    "de": "Können mich alle hören?",
    "es": "¿Todos me pueden oír?",
    "tr": "Herkes beni duyabiliyor mu?",
-   "it": "Mi sentite tutti?"
+   "it": "Mi sentite tutti?",
+   "aliases": {
+    "ar": [
+     "تسمعو فيا؟",
+     "الكل يسمع فيا؟",
+     "صوتي واصل؟"
+    ]
+   }
   },
   {
    "en": "Lunch will be served in the main hall.",
@@ -249,7 +308,13 @@
    "de": "Vielen Dank für Ihre Aufmerksamkeit.",
    "es": "Gracias por su atención.",
    "tr": "İlginiz için teşekkür ederim.",
-   "it": "Grazie per l'attenzione."
+   "it": "Grazie per l'attenzione.",
+   "aliases": {
+    "ar": [
+     "يعطيكم الصحة على الاستماع",
+     "شكرًا على الاستماع امتاعكم"
+    ]
+   }
   },
   {
    "en": "This concludes today's program.",
@@ -269,7 +334,13 @@
    "de": "Bis morgen.",
    "es": "Hasta mañana.",
    "tr": "Yarın görüşmek üzere.",
-   "it": "A domani."
+   "it": "A domani.",
+   "aliases": {
+    "ar": [
+     "نشوفوكم غدوة",
+     "نتلاقو غدوة"
+    ]
+   }
   },
   {
    "en": "Have a nice evening.",
@@ -320,6 +391,296 @@
    "es": "No duden en hacer preguntas.",
    "tr": "Soru sormaktan çekinmeyin.",
    "it": "Non esitate a fare domande."
+  },
+  {
+   "en": "In the name of God, the Most Gracious, the Most Merciful.",
+   "ar": "بسم الله الرحمن الرحيم.",
+   "zh": "奉至仁至慈的真主之名。",
+   "fr": "Au nom de Dieu, le Tout Miséricordieux, le Très Miséricordieux.",
+   "de": "Im Namen Gottes, des Allerbarmers, des Barmherzigen.",
+   "es": "En el nombre de Dios, el Compasivo, el Misericordioso.",
+   "tr": "Rahman ve Rahim olan Allah'ın adıyla.",
+   "it": "Nel nome di Dio, il Compassionevole, il Misericordioso."
+  },
+  {
+   "en": "Peace, mercy and blessings of God be upon you.",
+   "ar": "السلام عليكم ورحمة الله وبركاته.",
+   "zh": "愿真主的平安、慈悯和吉祥降临于你们。",
+   "fr": "Que la paix, la miséricorde et les bénédictions de Dieu soient sur vous.",
+   "de": "Friede, Barmherzigkeit und Segen Gottes seien mit Ihnen.",
+   "es": "Que la paz, la misericordia y las bendiciones de Dios sean con ustedes.",
+   "tr": "Allah'ın selamı, rahmeti ve bereketi üzerinize olsun.",
+   "it": "La pace, la misericordia e le benedizioni di Dio siano su di voi."
+  },
+  {
+   "en": "Your Excellencies, ladies and gentlemen.",
+   "ar": "أصحاب المعالي والسعادة، السيدات والسادة.",
+   "zh": "各位阁下，女士们，先生们。",
+   "fr": "Excellences, Mesdames et Messieurs.",
+   "de": "Exzellenzen, meine Damen und Herren.",
+   "es": "Excelencias, señoras y señores.",
+   "tr": "Ekselansları, hanımefendiler ve beyefendiler.",
+   "it": "Eccellenze, signore e signori."
+  },
+  {
+   "en": "Honorable guests.",
+   "ar": "الضيوف الكرام.",
+   "zh": "尊敬的各位来宾。",
+   "fr": "Chers invités.",
+   "de": "Sehr geehrte Gäste.",
+   "es": "Distinguidos invitados.",
+   "tr": "Değerli konuklar.",
+   "it": "Illustri ospiti."
+  },
+  {
+   "en": "It is an honor to welcome you to Libya.",
+   "ar": "يشرفنا أن نرحب بكم في ليبيا.",
+   "zh": "我们很荣幸欢迎各位来到利比亚。",
+   "fr": "C'est un honneur de vous accueillir en Libye.",
+   "de": "Es ist uns eine Ehre, Sie in Libyen willkommen zu heißen.",
+   "es": "Es un honor darles la bienvenida a Libia.",
+   "tr": "Sizi Libya'da ağırlamaktan onur duyuyoruz.",
+   "it": "È un onore darvi il benvenuto in Libia."
+  },
+  {
+   "en": "Welcome to Tripoli.",
+   "ar": "مرحبًا بكم في طرابلس.",
+   "zh": "欢迎来到的黎波里。",
+   "fr": "Bienvenue à Tripoli.",
+   "de": "Willkommen in Tripolis.",
+   "es": "Bienvenidos a Trípoli.",
+   "tr": "Trablus'a hoş geldiniz.",
+   "it": "Benvenuti a Tripoli."
+  },
+  {
+   "en": "Welcome to Benghazi.",
+   "ar": "مرحبًا بكم في بنغازي.",
+   "zh": "欢迎来到班加西。",
+   "fr": "Bienvenue à Benghazi.",
+   "de": "Willkommen in Bengasi.",
+   "es": "Bienvenidos a Bengasi.",
+   "tr": "Bingazi'ye hoş geldiniz.",
+   "it": "Benvenuti a Bengasi."
+  },
+  {
+   "en": "We will now listen to the national anthem.",
+   "ar": "نستمع الآن إلى النشيد الوطني.",
+   "zh": "现在我们聆听国歌。",
+   "fr": "Nous allons maintenant écouter l'hymne national.",
+   "de": "Wir hören nun die Nationalhymne.",
+   "es": "Escucharemos ahora el himno nacional.",
+   "tr": "Şimdi milli marşı dinleyeceğiz.",
+   "it": "Ascolteremo ora l'inno nazionale."
+  },
+  {
+   "en": "Please stand for the national anthem.",
+   "ar": "يرجى الوقوف للنشيد الوطني.",
+   "zh": "请全体起立，奏国歌。",
+   "fr": "Veuillez vous lever pour l'hymne national.",
+   "de": "Bitte erheben Sie sich für die Nationalhymne.",
+   "es": "Por favor, pónganse de pie para el himno nacional.",
+   "tr": "Lütfen milli marş için ayağa kalkın.",
+   "it": "Vi preghiamo di alzarvi per l'inno nazionale."
+  },
+  {
+   "en": "Let us observe a minute of silence.",
+   "ar": "لنقف دقيقة صمت.",
+   "zh": "让我们默哀一分钟。",
+   "fr": "Observons une minute de silence.",
+   "de": "Lassen Sie uns eine Schweigeminute einlegen.",
+   "es": "Guardemos un minuto de silencio.",
+   "tr": "Bir dakikalık saygı duruşunda bulunalım.",
+   "it": "Osserviamo un minuto di silenzio."
+  },
+  {
+   "en": "Under the patronage of the Prime Minister.",
+   "ar": "تحت رعاية رئيس الوزراء.",
+   "zh": "在总理的主持下。",
+   "fr": "Sous le haut patronage du Premier ministre.",
+   "de": "Unter der Schirmherrschaft des Premierministers.",
+   "es": "Bajo el patrocinio del Primer Ministro.",
+   "tr": "Başbakan'ın himayesinde.",
+   "it": "Sotto l'alto patronato del Primo Ministro."
+  },
+  {
+   "en": "The minister will now deliver his speech.",
+   "ar": "يلقي السيد الوزير الآن كلمته.",
+   "zh": "现在请部长致辞。",
+   "fr": "Le ministre va maintenant prononcer son discours.",
+   "de": "Der Minister wird nun seine Rede halten.",
+   "es": "El ministro pronunciará ahora su discurso.",
+   "tr": "Sayın Bakan şimdi konuşmasını yapacak.",
+   "it": "Il ministro terrà ora il suo discorso."
+  },
+  {
+   "en": "We now give the floor to the minister.",
+   "ar": "نعطي الكلمة الآن للسيد الوزير.",
+   "zh": "现在请部长发言。",
+   "fr": "Nous donnons maintenant la parole au ministre.",
+   "de": "Wir übergeben nun das Wort an den Minister.",
+   "es": "Damos ahora la palabra al ministro.",
+   "tr": "Şimdi sözü Sayın Bakan'a veriyoruz.",
+   "it": "Diamo ora la parola al ministro."
+  },
+  {
+   "en": "The memorandum of understanding will now be signed.",
+   "ar": "سيتم الآن توقيع مذكرة التفاهم.",
+   "zh": "现在将签署谅解备忘录。",
+   "fr": "Le protocole d'accord va maintenant être signé.",
+   "de": "Die Absichtserklärung wird nun unterzeichnet.",
+   "es": "Se firmará ahora el memorando de entendimiento.",
+   "tr": "Şimdi mutabakat zaptı imzalanacak.",
+   "it": "Verrà ora firmato il memorandum d'intesa."
+  },
+  {
+   "en": "This agreement strengthens cooperation between our two countries.",
+   "ar": "تعزز هذه الاتفاقية التعاون بين بلدينا.",
+   "zh": "这项协议加强了我们两国之间的合作。",
+   "fr": "Cet accord renforce la coopération entre nos deux pays.",
+   "de": "Dieses Abkommen stärkt die Zusammenarbeit zwischen unseren beiden Ländern.",
+   "es": "Este acuerdo fortalece la cooperación entre nuestros dos países.",
+   "tr": "Bu anlaşma iki ülkemiz arasındaki işbirliğini güçlendiriyor.",
+   "it": "Questo accordo rafforza la cooperazione tra i nostri due paesi."
+  },
+  {
+   "en": "We thank all the delegations for their participation.",
+   "ar": "نشكر جميع الوفود على مشاركتهم.",
+   "zh": "我们感谢各代表团的参与。",
+   "fr": "Nous remercions toutes les délégations pour leur participation.",
+   "de": "Wir danken allen Delegationen für ihre Teilnahme.",
+   "es": "Agradecemos a todas las delegaciones su participación.",
+   "tr": "Tüm heyetlere katılımları için teşekkür ederiz.",
+   "it": "Ringraziamo tutte le delegazioni per la loro partecipazione."
+  },
+  {
+   "en": "The government is committed to this project.",
+   "ar": "الحكومة ملتزمة بهذا المشروع.",
+   "zh": "政府致力于这个项目。",
+   "fr": "Le gouvernement est engagé dans ce projet.",
+   "de": "Die Regierung hat sich diesem Projekt verpflichtet.",
+   "es": "El gobierno está comprometido con este proyecto.",
+   "tr": "Hükümet bu projeye bağlıdır.",
+   "it": "Il governo è impegnato in questo progetto."
+  },
+  {
+   "en": "We look forward to fruitful cooperation.",
+   "ar": "نتطلع إلى تعاون مثمر.",
+   "zh": "我们期待富有成果的合作。",
+   "fr": "Nous nous réjouissons d'une coopération fructueuse.",
+   "de": "Wir freuen uns auf eine fruchtbare Zusammenarbeit.",
+   "es": "Esperamos una cooperación fructífera.",
+   "tr": "Verimli bir işbirliği için sabırsızlanıyoruz.",
+   "it": "Attendiamo con interesse una cooperazione proficua."
+  },
+  {
+   "en": "The press conference will begin shortly.",
+   "ar": "سيبدأ المؤتمر الصحفي بعد قليل.",
+   "zh": "新闻发布会即将开始。",
+   "fr": "La conférence de presse va bientôt commencer.",
+   "de": "Die Pressekonferenz beginnt in Kürze.",
+   "es": "La rueda de prensa comenzará en breve.",
+   "tr": "Basın toplantısı birazdan başlayacak.",
+   "it": "La conferenza stampa inizierà a breve."
+  },
+  {
+   "en": "Questions from journalists, please.",
+   "ar": "تفضلوا بأسئلة الصحفيين.",
+   "zh": "请记者们提问。",
+   "fr": "Les questions des journalistes, s'il vous plaît.",
+   "de": "Bitte die Fragen der Journalisten.",
+   "es": "Preguntas de los periodistas, por favor.",
+   "tr": "Gazetecilerin soruları lütfen.",
+   "it": "Le domande dei giornalisti, prego."
+  },
+  {
+   "en": "We are working to improve services for citizens.",
+   "ar": "نعمل على تحسين الخدمات المقدمة للمواطنين.",
+   "zh": "我们正在努力改善为公民提供的服务。",
+   "fr": "Nous travaillons à améliorer les services aux citoyens.",
+   "de": "Wir arbeiten daran, die Dienstleistungen für die Bürger zu verbessern.",
+   "es": "Trabajamos para mejorar los servicios a los ciudadanos.",
+   "tr": "Vatandaşlara sunulan hizmetleri iyileştirmek için çalışıyoruz.",
+   "it": "Stiamo lavorando per migliorare i servizi ai cittadini."
+  },
+  {
+   "en": "May God protect Libya.",
+   "ar": "حفظ الله ليبيا.",
+   "zh": "愿真主保佑利比亚。",
+   "fr": "Que Dieu protège la Libye.",
+   "de": "Möge Gott Libyen beschützen.",
+   "es": "Que Dios proteja a Libia.",
+   "tr": "Allah Libya'yı korusun.",
+   "it": "Che Dio protegga la Libia."
+  },
+  {
+   "en": "Thank you for your kind invitation.",
+   "ar": "شكرًا على دعوتكم الكريمة.",
+   "zh": "感谢您的盛情邀请。",
+   "fr": "Merci pour votre aimable invitation.",
+   "de": "Vielen Dank für Ihre freundliche Einladung.",
+   "es": "Gracias por su amable invitación.",
+   "tr": "Nazik davetiniz için teşekkür ederim.",
+   "it": "Grazie per il vostro gentile invito."
+  },
+  {
+   "en": "This forum brings together experts from many countries.",
+   "ar": "يجمع هذا الملتقى خبراء من دول عديدة.",
+   "zh": "本论坛汇聚了来自许多国家的专家。",
+   "fr": "Ce forum réunit des experts de nombreux pays.",
+   "de": "Dieses Forum bringt Experten aus vielen Ländern zusammen.",
+   "es": "Este foro reúne a expertos de muchos países.",
+   "tr": "Bu forum birçok ülkeden uzmanları bir araya getiriyor.",
+   "it": "Questo forum riunisce esperti di molti paesi."
+  },
+  {
+   "en": "The meeting is adjourned.",
+   "ar": "رُفعت الجلسة.",
+   "zh": "会议到此结束。",
+   "fr": "La séance est levée.",
+   "de": "Die Sitzung ist geschlossen.",
+   "es": "Se levanta la sesión.",
+   "tr": "Toplantı kapanmıştır.",
+   "it": "La seduta è tolta."
+  },
+  {
+   "en": "We will now take a group photo.",
+   "ar": "سنلتقط الآن صورة جماعية.",
+   "zh": "现在我们合影留念。",
+   "fr": "Nous allons maintenant prendre une photo de groupe.",
+   "de": "Wir machen jetzt ein Gruppenfoto.",
+   "es": "Ahora nos tomaremos una foto de grupo.",
+   "tr": "Şimdi bir grup fotoğrafı çekeceğiz.",
+   "it": "Ora scatteremo una foto di gruppo."
+  },
+  {
+   "en": "The final statement will now be read.",
+   "ar": "سيتم الآن تلاوة البيان الختامي.",
+   "zh": "现在宣读最后声明。",
+   "fr": "La déclaration finale va maintenant être lue.",
+   "de": "Die Abschlusserklärung wird nun verlesen.",
+   "es": "Se leerá ahora la declaración final.",
+   "tr": "Şimdi sonuç bildirgesi okunacak.",
+   "it": "Verrà ora letta la dichiarazione finale."
+  },
+  {
+   "en": "On behalf of the government, I thank you.",
+   "ar": "باسم الحكومة، أشكركم.",
+   "zh": "我谨代表政府感谢各位。",
+   "fr": "Au nom du gouvernement, je vous remercie.",
+   "de": "Im Namen der Regierung danke ich Ihnen.",
+   "es": "En nombre del gobierno, les doy las gracias.",
+   "tr": "Hükümet adına size teşekkür ederim.",
+   "it": "A nome del governo, vi ringrazio."
+  },
+  {
+   "en": "The session will resume after the break.",
+   "ar": "تُستأنف الجلسة بعد الاستراحة.",
+   "zh": "休息后会议将继续进行。",
+   "fr": "La séance reprendra après la pause.",
+   "de": "Die Sitzung wird nach der Pause fortgesetzt.",
+   "es": "La sesión se reanudará después de la pausa.",
+   "tr": "Oturum aradan sonra devam edecek.",
+   "it": "La sessione riprenderà dopo la pausa."
   }
  ]
 }

@@ -48,3 +48,26 @@ test('glossary: names kept, per-language wording, placeholders checked', async (
   const ar = await restore(text.replace('talks about', 'يتحدث عن').replace('at the', 'في'), slots, 'ar', async (t) => t);
   assert.match(ar, /المؤتمر السنوي/);
 });
+
+test('Libyan Arabic is turned into formal Arabic; formal Arabic is left alone', async () => {
+  const { normalizeLibyan } = await import('../server/offline/arabic.js');
+  assert.equal(normalizeLibyan('ما نبيش نمشي'), 'لا أريد أن أذهب');
+  assert.equal(normalizeLibyan('شكرا هلبا'), 'شكرًا جزيلًا');
+  assert.match(normalizeLibyan('الكهرباء بيتصلح بكرة'), /سيتم إصلاحه غدًا/);
+  const msa = 'أعلن رئيس المجلس الرئاسي عن خطة جديدة للتنمية.';
+  assert.equal(normalizeLibyan(msa), msa);
+});
+
+test('phrasebook understands Libyan ways of saying a line, but never shows them as a translation', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lt-mem-')), 'learned.jsonl');
+  const m = new TranslationMemory({ file, phrasebookFile });
+  assert.equal(m.lookup('يعطيكم الصحة', 'ar', 'en').text, 'Thank you very much.');
+  assert.equal(m.lookup('Thank you very much.', 'en', 'ar').text, 'شكرًا جزيلًا.');
+});
+
+test('glossary: Arabic terms are found with attached و / ب / لل', () => {
+  const g = parseGlossary('المجلس الرئاسي = en: the Presidential Council\nطرابلس = en: Tripoli');
+  assert.equal(protect('والمجلس الرئاسي في طرابلس', g).text, 'و XQ1 في XQ2');
+  assert.equal(protect('رسالة للمجلس الرئاسي من بطرابلس', g).text, 'رسالة ل XQ1 من ب XQ2');
+  assert.equal(protect('المجلس الرئاسيين', g).slots.length, 0, 'a longer word is not a match');
+});

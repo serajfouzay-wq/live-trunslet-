@@ -317,13 +317,13 @@
     "base-tokens.txt"
    ]
   },
-  "whisper-small": {
-   "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2",
-   "size": 639387718,
+  "whisper-turbo": {
+   "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-turbo.tar.bz2",
+   "size": 563790207,
    "keep": [
-    "small-encoder.int8.onnx",
-    "small-decoder.int8.onnx",
-    "small-tokens.txt"
+    "turbo-encoder.int8.onnx",
+    "turbo-decoder.int8.onnx",
+    "turbo-tokens.txt"
    ]
   }
  }

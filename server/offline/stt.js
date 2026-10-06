@@ -15,11 +15,11 @@ export function createLocalStt({ lang, quality, onResult, onStatus }) {
   const worker = new Worker(path.join(here, 'stt-worker.cjs'));
   let ready = false;
   const queue = [];
-  onStatus?.({ state: 'connecting', detail: `offline ${size === 'small' ? 'accurate' : 'fast'} model` });
+  onStatus?.({ state: 'connecting', detail: `offline ${size === 'base' ? 'fast' : 'accurate'} model` });
   worker.on('message', (m) => {
     if (m.type === 'ready') {
       ready = true;
-      onStatus?.({ state: 'connected', detail: `offline · ${size === 'small' ? 'accurate' : 'fast'}` });
+      onStatus?.({ state: 'connected', detail: `offline · ${size === 'base' ? 'fast' : 'accurate'}` });
       for (const b of queue.splice(0)) worker.postMessage({ type: 'audio', data: b });
     } else if (m.type === 'final' || m.type === 'partial') {
       const detected = m.lang && LANGUAGES[m.lang] ? m.lang : undefined;

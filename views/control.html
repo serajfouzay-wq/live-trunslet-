@@ -215,8 +215,22 @@
             <label class="f">Context <input data-set="context" maxlength="1000" placeholder="e.g. Renewable energy conference in Riyadh; speakers are engineers and investors"></label>
           </div>
           <div class="card">
+            <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-globe"/></svg></span><div><h3>Arabic and official events</h3><p>Tuned for Libyan speakers at government events. Works with and without internet.</p></div></div>
+            <div class="grid2">
+              <label class="f">Kind of event
+                <select data-set="eventType"><option value="government">Government / official</option><option value="general">General</option></select></label>
+              <label class="f">How the Arabic speakers talk
+                <select data-set="arabicDialect"><option value="ly">Libyan dialect</option><option value="msa">Formal Arabic (فصحى)</option><option value="other">Another dialect</option></select></label>
+              <label class="f">Arabic shown on screen
+                <select data-set="arabicDisplay"><option value="formal">Cleaned into formal Arabic</option><option value="spoken">Exactly as spoken</option></select></label>
+            </div>
+            <label class="check"><input type="checkbox" data-set="arabicStrongModel"><span>Use the stronger Claude model for Arabic speech <em class="tag-soft">better with dialect, a bit slower and costlier</em></span></label>
+            <p class="hint">Online, Claude is told the speaker is Libyan and the event is official. Offline, Libyan words are turned into formal Arabic before translating (measured on new test sentences: score 56 → 78 out of 100).</p>
+          </div>
+          <div class="card">
             <div class="card-h"><span class="ci"><svg class="ic"><use href="/assets/icons.svg#i-book"/></svg></span><div><h3>Names and special terms</h3><p>One per line. Write only the word to keep it exactly as is, or <b>term = required translation</b>.</p></div></div>
             <textarea data-set="glossary" rows="12" maxlength="8000" spellcheck="false" placeholder="Seraj Fouzay&#10;Solar Bridge&#10;net zero = صافي الانبعاثات الصفرية&#10;board of directors = مجلس الإدارة"></textarea>
+            <div class="row" style="margin-top:10px"><button class="btn" id="preset-libya" type="button">Add Libyan institutions and cities</button></div>
             <p class="hint">Applied to every translation immediately and saved with the event.</p>
           </div>
         </section>
