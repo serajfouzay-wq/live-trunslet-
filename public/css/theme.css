@@ -2,8 +2,14 @@
   --accent: #5aa2ff;
   --dim: 45;
   --blur: 0px;
-  --font: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans Arabic', Tahoma, Arial, sans-serif;
+  --font: 'Readex', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans Arabic', Tahoma, Arial, sans-serif;
 }
+/* Majlis: the signature look. Night blue, antique gold and a quiet eight-point star pattern. */
+[data-theme='majlis'] { --bg1: #050913; --bg2: #0c1830; --bg3: #1b2c52; --text: #f7f1e3; --muted: #b9ad8f; --panel: rgba(255, 240, 210, 0.055); --panel-line: rgba(212, 175, 106, 0.28); --tint: 4, 8, 18; --gold: #d4af6a; }
+[data-theme='majlis'] .bg { background: radial-gradient(120% 90% at 50% 0%, #142447 0%, #0a1426 45%, #04070f 100%); }
+[data-theme='majlis'] .bg::before { background: radial-gradient(circle, rgba(212, 175, 106, 0.35), transparent 62%); opacity: 0.35; }
+[data-theme='majlis'] .bg::after { opacity: 0.12; }
+[data-theme='majlis'] .bg-tint::after { content: ''; position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23d4af6a' stroke-width='1'%3E%3Cpath d='M48 18L78 48L48 78L18 48z'/%3E%3Cpath d='M27 27h42v42H27z'/%3E%3Cpath d='M48 0v12M48 84v12M0 48h12M84 48h12'/%3E%3Ccircle cx='48' cy='48' r='6'/%3E%3C/g%3E%3C/svg%3E"); background-size: 96px 96px; opacity: 0.07; -webkit-mask-image: radial-gradient(130% 100% at 50% 0%, #000 30%, transparent 85%); mask-image: radial-gradient(130% 100% at 50% 0%, #000 30%, transparent 85%); }
 [data-theme='midnight'] { --bg1: #08101f; --bg2: #16305f; --bg3: #0e6b8a; --text: #f4f7ff; --muted: #9fb2d6; --panel: rgba(255, 255, 255, 0.075); --panel-line: rgba(255, 255, 255, 0.12); --tint: 5, 10, 24; }
 [data-theme='aurora'] { --bg1: #0a1a24; --bg2: #2c1163; --bg3: #0b8f7a; --text: #f3f8ff; --muted: #a9bdd9; --panel: rgba(255, 255, 255, 0.08); --panel-line: rgba(255, 255, 255, 0.14); --tint: 8, 8, 28; }
 [data-theme='neon'] { --bg1: #07040f; --bg2: #2a0a52; --bg3: #0a6cff; --text: #f6f1ff; --muted: #b9a8e6; --panel: rgba(190, 120, 255, 0.10); --panel-line: rgba(190, 120, 255, 0.30); --tint: 5, 2, 14; }
@@ -37,3 +43,8 @@ body { font-family: var(--font); color: var(--text); background: var(--bg1); ove
 .hdr[data-pos='top-center'] { flex-direction: column; text-align: center; gap: 0.6em; }
 .hdr[data-pos='top-right'] { flex-direction: row-reverse; text-align: right; }
 .hdr:not(:has(.logo)) { gap: 0; }
+
+/* Words arrive softly as they are spoken or translated */
+.w-new { animation: word-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes word-in { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: blur(0); } }
+@media (prefers-reduced-motion: reduce) { .w-new { animation: none; } }

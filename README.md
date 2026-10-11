@@ -82,15 +82,31 @@ Set this up in **Glossary → Arabic and official events**. The defaults are Lib
 - **Online (Claude)**: Claude is told the speakers use Libyan Arabic (هلبا، نبي، توا، باهي، شن، ما…ش), the event is official, and that titles and protocol are rendered formally (معالي الوزير → His Excellency the Minister). Arabic speech uses the stronger Claude model; you can switch that off.
 - **Arabic on screen**: *Cleaned into formal Arabic* turns spoken Libyan into clear فصحى for Arabic readers. *Exactly as spoken* shows the recognised words.
 - **Speech**: Deepgram is asked for Libyan Arabic (ar-LY) first and falls back to general Arabic if that is not offered.
-- **Offline**: Libyan words and grammar are rewritten into formal Arabic before the offline translator sees them. Measured on 20 new Libyan sentences (Arabic → English, chrF score out of 100): **56 → 78**, nearly the formal-Arabic ceiling of 79. Formal Arabic passes through unchanged.
+- **Offline**: Libyan words and grammar are rewritten into formal Arabic before the offline translator sees them (Arabic → English, chrF score out of 100):
+
+  | Test sentences | As spoken | v2.1 | v2.2 |
+  | --- | --- | --- | --- |
+  | 25 new sentences, written before any 2.2 change and never used for tuning | 48.5 | 70.1 | **75.6** |
+  | 20 sentences used to develop 2.2 | 40.9 | 57.0 | 73.9 |
+
+  Formal Arabic passes through unchanged (checked on 20 formal sentences and on the formal versions of the test sets).
 - **Phrasebook**: protocol lines (Bismillah, welcoming delegations, the national anthem, signing ceremonies, adjourning) in all 8 languages, and common Libyan ways of saying them (يعطيكم الصحة، مرحبتين بيكم…).
 - **Glossary preset**: the **Add Libyan institutions and cities** button fills in the Presidential Council, the Government of National Unity, the House of Representatives, the Central Bank, major cities and more, with official names in every language. Arabic terms are found even with و / ب / لل attached.
 
 Honest note: the offline improvements were measured on written test sentences. Speech recognition of real Libyan voices has not been measured yet. Before an important event, test with a recording of a real speaker, and use *Teach the offline mode* with the speeches and the agenda.
 
-## Faster mode
+## Faster mode (on by default)
 
-Normally each sentence is translated when the speaker finishes it. **Faster mode** translates while they are still talking, so the screen is only a moment behind. It makes more Claude requests (more cost). Turn it on in *Live*.
+The translation appears while the speaker is still talking, on the big screen **and on phones**, and the final, polished translation replaces it the moment the sentence ends (the text never jumps back shorter). When the offline translation pack is installed these live drafts come from the laptop itself: about 0.8 s behind the speaker, and free. Without the pack they come from Claude. Switch it off in *Live* if you prefer only finished sentences.
+
+## What changed in 2.2
+
+- **Cheaper and quicker Claude**: Claude Haiku 5.5 by default (about a tenth of the cost of Haiku 4.5), with no "thinking" delay. The event setup (rules, context, glossary) is cached, so each sentence sends only itself. If your key cannot use Haiku 5.5 the app switches to Haiku 4.5 by itself.
+- **Safer accuracy**: a remembered translation is reused only when it really is the same sentence. Before, "We will **not** continue" could get the remembered translation of "We will continue". Online, only exact matches are reused.
+- **Names are heard correctly**: names and terms in your glossary are sent to Deepgram as key terms.
+- **Never gives up**: Deepgram keeps reconnecting until the internet is back; offline speech restarts itself if it crashes; if Claude is overloaded, that sentence is translated offline instead of waiting.
+- **Fixes**: correcting a sentence while it was still being translated could show the old translation; Windows pausing the microphone's audio is now resumed automatically.
+- **New look**: the *Majlis* theme (night blue, antique gold, a quiet eight-point star pattern), one bundled typeface for Arabic and Latin (works offline), words that fade in as they are spoken, sound bars on the language being spoken, and a greeting in each language while waiting. Phones get a live card and their own light/dark switch.
 
 ## Tips for a great event
 

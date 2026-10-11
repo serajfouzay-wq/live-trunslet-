@@ -51,8 +51,10 @@ function buildLanes(s) {
     lane.lang = code;
     lane.dir = L.dir;
     lane.style.setProperty('--lc', L.color);
-    lane.innerHTML = '<div class="tag"></div><div class="body"><div class="inner"></div></div>';
-    lane.querySelector('.tag').textContent = L.native;
+    lane.innerHTML = '<div class="tag"><span></span><span class="eq"><i></i><i></i><i></i></span></div><div class="body"><div class="inner"></div><div class="welcome"><b></b><small></small></div></div>';
+    lane.querySelector('.tag span').textContent = L.native;
+    lane.querySelector('.welcome b').textContent = L.welcome || '';
+    lane.querySelector('.welcome small').textContent = L.waiting || '';
     lanesEl.append(lane);
     laneEls.set(code, lane);
   }
@@ -65,6 +67,7 @@ function renderLanes(s) {
   for (const [code, lane] of laneEls) {
     const inner = lane.querySelector('.inner');
     const live = store.partial && store.partial.lang === code;
+    lane.classList.toggle('speaking', !!live && !!store.live);
     const draft = !live && store.partial && store.draft?.[code]; // fast mode: translation of what is being said right now
     const hasLive = live || !!draft;
     const segs = store.segments.slice(-(hasLive ? Math.max(1, shown - 1) : shown));
@@ -100,7 +103,7 @@ function renderLanes(s) {
 /** Largest font size (px) at which everything in the lane still fits. Cached until content or size changes. */
 function fitSize(lane, inner, sig) {
   const body = inner.parentElement;
-  const h = body.clientHeight;
+  const h = body.clientHeight - (parseFloat(getComputedStyle(body).paddingBottom) || 0);
   const w = body.clientWidth;
   const full = `${sig}|${w}x${h}`;
   if (lane._fitSig === full) return lane._fit;

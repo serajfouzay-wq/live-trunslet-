@@ -107,7 +107,7 @@ test('settings are validated', async () => {
   const r = await api('PATCH', '/settings', { title: 'Summit', theme: 'nope', dim: 999, screenLangs: ['ar', 'xx', 'fr'], logo: 'http://evil/x.png', maxLines: 3 });
   const s = await r.json();
   assert.equal(s.title, 'Summit');
-  assert.equal(s.theme, 'midnight'); // invalid value dropped
+  assert.equal(s.theme, 'majlis'); // invalid value dropped (default kept)
   assert.equal(s.dim, 90); // clamped
   assert.deepEqual(s.screenLangs, ['ar', 'fr']);
   assert.equal(s.logo, ''); // only /uploads/ paths accepted

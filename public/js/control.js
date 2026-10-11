@@ -194,9 +194,10 @@ const LAYOUTS = {
   focus: ['Focus', '<rect x="2" y="3" width="56" height="26" rx="2"/><rect x="2" y="32" width="27" height="13" rx="2"/><rect x="31" y="32" width="27" height="13" rx="2"/>'],
   subtitles: ['Subtitles', '<rect x="2" y="3" width="56" height="20" rx="2" opacity=".25"/><rect x="2" y="27" width="56" height="8" rx="2"/><rect x="2" y="37" width="56" height="8" rx="2"/>'],
 };
-const THEMES = { midnight: 'Midnight', aurora: 'Aurora', neon: 'Neon', sunset: 'Sunset', emerald: 'Emerald', gold: 'Gold', light: 'Light', contrast: 'High contrast' };
+const THEMES = { majlis: 'Majlis', midnight: 'Midnight', aurora: 'Aurora', neon: 'Neon', sunset: 'Sunset', emerald: 'Emerald', gold: 'Gold', light: 'Light', contrast: 'High contrast' };
 
 const THEME_BG = {
+  majlis: 'radial-gradient(circle at 70% 30%,#d4af6a 0 8%,transparent 9%),linear-gradient(135deg,#04070f,#0c1830,#1b2c52)',
   midnight: 'linear-gradient(135deg,#08101f,#16305f,#0e6b8a)', aurora: 'linear-gradient(135deg,#0a1a24,#2c1163,#0b8f7a)',
   neon: 'linear-gradient(135deg,#07040f,#2a0a52,#0a6cff)', sunset: 'linear-gradient(135deg,#1a0a1f,#6b1d4a,#f0742e)', emerald: 'linear-gradient(135deg,#04140f,#0b4a3a,#1fb58a)',
   gold: 'linear-gradient(135deg,#070707,#2b2010,#5c4310)', light: 'linear-gradient(135deg,#f6f8fc,#dbe6f8,#c5dcf5)', contrast: 'linear-gradient(135deg,#000,#000 60%,#ffe600)',
@@ -239,6 +240,7 @@ function renderSource() {
 }
 
 const LOOKS = [
+  { name: 'Majlis', note: 'Official: gold on night blue', set: { theme: 'majlis', accent: '#d4af6a', layout: 'stack', dim: 50, uniformSize: true } },
   { name: 'Conference', note: 'Calm and clear', set: { theme: 'midnight', layout: 'stack', dim: 45, uniformSize: true } },
   { name: 'Cinema', note: 'Subtitles over a picture', set: { theme: 'contrast', layout: 'subtitles', dim: 20, uniformSize: true } },
   { name: 'Gala', note: 'Gold, big first language', set: { theme: 'gold', layout: 'focus', dim: 50 } },

@@ -1,4 +1,4 @@
-import { connect, Store, applyLook, renderHeader } from '/assets/js/common.js';
+import { connect, Store, applyLook, renderHeader, setText } from '/assets/js/common.js';
 
 const $ = (s) => document.querySelector(s);
 const q = new URLSearchParams(location.search);
@@ -12,6 +12,7 @@ const save = (k, v) => { try { localStorage.setItem(`lt.${k}`, v); } catch { /* 
 
 let fs = Number(load('fs', 22));
 let showOrig = load('orig', '0') === '1';
+let look = load('look', 'event'); // this phone's own choice: event look, light or dark
 let stick = true;
 let langs = [];
 {
@@ -51,6 +52,9 @@ function draw() {
   const s = store.settings;
   if (!s) return;
   applyLook(s, { portrait: true }); // phones prefer the tall picture
+  if (look === 'light') document.documentElement.dataset.theme = 'light';
+  else if (look === 'dark') document.documentElement.dataset.theme = s.theme === 'light' ? 'majlis' : s.theme === 'contrast' ? 'contrast' : 'majlis';
+  document.body.classList.toggle('own-light', look === 'light');
   renderHeader($('.hdr'), s);
   document.body.classList.toggle('no-orig', !showOrig);
   const live = $('#livepill');
@@ -151,7 +155,7 @@ function drawFeed() {
     for (const l of c.lines) {
       let text = seg.tr[l.code] ?? (seg.src === l.code ? seg.text : '');
       if (!text && seg.trErr?.[l.code]) text = '—';
-      if (l.txt.textContent !== text) l.txt.textContent = text;
+      setText(l.txt, text);
       l.ln.classList.toggle('pending', !text);
     }
     const showSrc = !langs.includes(seg.src);
@@ -162,6 +166,7 @@ function drawFeed() {
     c.el.classList.toggle('old', i !== segs.length - 1);
   });
   for (const [id, c] of cards) if (!keep.has(id)) { c.el.remove(); cards.delete(id); }
+  drawLiveCard(feed);
   const empty = feed.querySelector('.empty');
   if (!segs.length && !empty) {
     const e = document.createElement('div');
@@ -170,6 +175,39 @@ function drawFeed() {
     feed.append(e);
   } else if (segs.length) empty?.remove();
   if (stick) feed.scrollTop = feed.scrollHeight;
+}
+
+/* The sentence being spoken right now: the speaker's own words in their language, and the live draft
+   translation in the others (faster mode). It turns into a normal card as soon as the sentence ends. */
+let liveCard = null;
+function drawLiveCard(feed) {
+  const p = store.partial;
+  const rows = p && store.live ? langs.map((code) => ({ code, text: p.lang === code ? p.text : store.draft?.[code] || '' })).filter((r) => r.text) : [];
+  if (!rows.length) { liveCard?.el.remove(); liveCard = null; return; }
+  if (!liveCard || liveCard.sig !== langs.join()) {
+    liveCard?.el.remove();
+    const el = document.createElement('article');
+    el.className = 'card live-card';
+    el.innerHTML = '<span class="live-tag"><i></i>Live</span>';
+    const lines = new Map();
+    langs.forEach((code, i) => {
+      const L = store.langs[code];
+      const ln = document.createElement('div');
+      ln.className = `ln${i === 0 ? ' main' : ''}`;
+      ln.dir = L.dir;
+      ln.style.setProperty('--lc', L.color);
+      ln.innerHTML = '<div class="txt"></div>';
+      el.append(ln);
+      lines.set(code, ln);
+    });
+    liveCard = { el, lines, sig: langs.join() };
+  }
+  for (const [code, ln] of liveCard.lines) {
+    const r = rows.find((x) => x.code === code);
+    ln.hidden = !r;
+    if (r) setText(ln.querySelector('.txt'), r.text);
+  }
+  if (feed.lastElementChild !== liveCard.el) feed.append(liveCard.el);
 }
 
 function drawLive() {
@@ -270,6 +308,17 @@ $('#orig-toggle').onclick = () => {
   showOrig = !showOrig;
   $('#orig-toggle').setAttribute('aria-pressed', showOrig);
   save('orig', showOrig ? '1' : '0');
+  render();
+};
+
+const LOOKS = ['event', 'light', 'dark'];
+const lookBtn = $('#look-toggle');
+const paintLook = () => { lookBtn.querySelector('span').textContent = { event: 'Look', light: 'Light', dark: 'Dark' }[look]; };
+paintLook();
+lookBtn.onclick = () => {
+  look = LOOKS[(LOOKS.indexOf(look) + 1) % LOOKS.length];
+  save('look', look);
+  paintLook();
   render();
 };
 

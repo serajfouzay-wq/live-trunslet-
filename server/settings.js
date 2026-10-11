@@ -3,7 +3,7 @@ import path from 'node:path';
 import { DATA } from './config.js';
 import { LANG_CODES, isLang } from './languages.js';
 
-export const THEMES = ['midnight', 'aurora', 'neon', 'sunset', 'emerald', 'gold', 'light', 'contrast'];
+export const THEMES = ['majlis', 'midnight', 'aurora', 'neon', 'sunset', 'emerald', 'gold', 'light', 'contrast'];
 export const LAYOUTS = ['stack', 'columns', 'grid', 'focus', 'subtitles'];
 export const LOGO_POS = ['top-left', 'top-center', 'top-right'];
 export const QR_POS = ['bottom-right', 'bottom-left', 'top-right', 'top-left', 'center'];
@@ -17,8 +17,8 @@ export const DEFAULT_SETTINGS = {
   logoSize: 100, // % of the default size
   bgLandscape: '',
   bgPortrait: '',
-  theme: 'midnight',
-  accent: '#5aa2ff',
+  theme: 'majlis',
+  accent: '#d4af6a',
   dim: 45, // background darkening, %
   blur: 0, // background blur, px
   layout: 'stack',

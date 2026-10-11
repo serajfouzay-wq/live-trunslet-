@@ -110,7 +110,7 @@ export function reconcile(inner, items) {
     let el = existing.get(it.key);
     if (!el) { el = document.createElement('p'); el.dataset.k = it.key; }
     existing.delete(it.key);
-    if (el.textContent !== it.text) el.textContent = it.text;
+    setText(el, it.text);
     if (el.className !== it.cls) el.className = it.cls;
     if (it.spk) el.dataset.spk = it.spk; else delete el.dataset.spk;
     if (inner.children[i] !== el) inner.insertBefore(el, inner.children[i] || null);
@@ -119,3 +119,20 @@ export function reconcile(inner, items) {
 }
 
 export const isPortrait = () => window.innerHeight > window.innerWidth * 1.05;
+
+/**
+ * Show `text` in `el`. When the new text continues the old one (speech or a translation streaming in), only the
+ * new words are added, and they fade in; anything else replaces the text at once.
+ */
+export function setText(el, text) {
+  const old = el.textContent;
+  if (old === text) return;
+  if (old && text.startsWith(old) && el.childNodes.length < 60) {
+    const span = document.createElement('span');
+    span.className = 'w-new';
+    span.textContent = text.slice(old.length);
+    el.append(span);
+  } else {
+    el.textContent = text;
+  }
+}
