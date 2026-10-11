@@ -29,15 +29,14 @@ for (const s of set) {
   rows.dialect.push(chrf(raw, s.en));
   let norm = null;
   if (normalize) { norm = await offline.mt.translate(normalize(s.ly), 'ar', 'en'); rows.normalized.push(chrf(norm, s.en)); }
-  const msa = await offline.mt.translate(s.msa, 'ar', 'en');
-  rows.msa.push(chrf(msa, s.en));
-  if (normalize) rows.msaNorm.push(chrf(await offline.mt.translate(normalize(s.msa), 'ar', 'en'), s.en));
+  if (s.msa) rows.msa.push(chrf(await offline.mt.translate(s.msa, 'ar', 'en'), s.en));
+  if (normalize && s.msa) rows.msaNorm.push(chrf(await offline.mt.translate(normalize(s.msa), 'ar', 'en'), s.en));
   if (show) console.log(`\n${s.ly}\n  ref : ${s.en}\n  raw : ${raw}${norm ? `\n  norm: ${normalize(s.ly)}  =>  ${norm}` : ''}`);
 }
 console.log(`\nLibyan dialect, offline Arabic->English chrF (0-100), ${set.length} sentences`);
 console.log(`  dialect as spoken            : ${avg(rows.dialect).toFixed(1)}`);
 if (rows.normalized.length) console.log(`  after Libyan normalizer      : ${avg(rows.normalized).toFixed(1)}`);
-console.log(`  same sentences in formal MSA : ${avg(rows.msa).toFixed(1)}  (ceiling for this engine)`);
+if (rows.msa.length) console.log(`  same sentences in formal MSA : ${avg(rows.msa).toFixed(1)}  (ceiling for this engine)`);
 if (rows.msaNorm.length) console.log(`  formal MSA through normalizer: ${avg(rows.msaNorm).toFixed(1)}  (must not drop: the normalizer must not harm formal Arabic)`);
 await offline.mt.close();
 process.exit(0);

@@ -474,6 +474,8 @@ async function startMic() {
   });
   const ctx = new AudioContext();
   if (ctx.state === 'suspended') await ctx.resume();
+  // Windows can pause audio (sleep, another app taking the device): resume as soon as that happens.
+  ctx.onstatechange = () => { if (mic?.ctx === ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); };
   await ctx.audioWorklet.addModule('/assets/audio-worklet.js');
   const src = ctx.createMediaStreamSource(stream);
   const node = new AudioWorkletNode(ctx, 'pcm-worklet');

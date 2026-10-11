@@ -12,8 +12,11 @@ function candidatesFor(lang, multi, dialect) {
 }
 const BASE_URL = process.env.DEEPGRAM_URL || 'wss://api.deepgram.com/v1/listen'; // overridable for tests
 
-export function createDeepgram({ key, lang, multi, dialect, diarize, onResult, onStatus }) {
-  const candidates = candidatesFor(lang, multi, dialect);
+export function createDeepgram({ key, lang, multi, dialect, diarize, keyterms = [], onResult, onStatus }) {
+  // Glossary names and terms are sent as "key terms" so they are recognised correctly. If a model does not
+  // accept them for this language, the same model is tried again without them.
+  const terms = [...new Set(keyterms.map((t) => String(t).trim()).filter((t) => t.length > 1 && t.length <= 60))].slice(0, 50);
+  const candidates = candidatesFor(lang, multi, dialect).flatMap((pair) => (terms.length && pair[0] === 'nova-3' ? [[...pair, true], pair] : [pair]));
   let ws = null;
   let closed = false;
   let ready = false;
@@ -23,7 +26,7 @@ export function createDeepgram({ key, lang, multi, dialect, diarize, onResult, o
   let keepAlive = null;
   let lastAudio = Date.now();
 
-  function url([model, language]) {
+  function url([model, language, withTerms]) {
     const q = new URLSearchParams({
       model,
       language,
@@ -38,13 +41,14 @@ export function createDeepgram({ key, lang, multi, dialect, diarize, onResult, o
       vad_events: 'true',
     });
     if (diarize) q.set('diarize', 'true');
+    if (withTerms) for (const t of terms) q.append('keyterm', t);
     return `${BASE_URL}?${q}`;
   }
 
   function connect() {
     if (closed) return;
     const pair = candidates[idx];
-    const model = `${pair[0]} ${pair[1]}`;
+    const model = `${pair[0]} ${pair[1]}${pair[2] ? ' + key terms' : ''}`;
     onStatus?.({ state: 'connecting', detail: model });
     ws = new WebSocket(url(pair), { headers: { Authorization: `Token ${key}` } });
 
@@ -99,13 +103,11 @@ export function createDeepgram({ key, lang, multi, dialect, diarize, onResult, o
       ready = false;
       clearInterval(keepAlive);
       if (closed) return;
-      if (retries < 5) {
-        retries += 1;
-        onStatus?.({ state: 'connecting', detail: 'reconnecting' });
-        setTimeout(connect, 800 * retries);
-      } else {
-        onStatus?.({ state: 'error', detail: 'Connection to Deepgram lost' });
-      }
+      // Never give up during an event: retry quickly at first, then every 5 s until the connection is back.
+      retries += 1;
+      if (retries === 6) onStatus?.({ state: 'error', detail: 'Connection to Deepgram lost; still trying to reconnect' });
+      else onStatus?.({ state: 'connecting', detail: 'reconnecting' });
+      setTimeout(connect, Math.min(5000, 800 * retries));
     });
   }
 

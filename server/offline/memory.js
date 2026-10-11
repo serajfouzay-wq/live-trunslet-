@@ -30,6 +30,20 @@ function grams(s) {
   return out;
 }
 
+// Words that flip or change the meaning: a "nearly the same" sentence that differs in one of these is not the same.
+const CRITICAL = new Set(('not no never none nothing nobody dont doesnt didnt wont cant cannot isnt arent wasnt shouldnt without '
+  + 'لا لم لن ما ليس ليست غير بدون مش موش ماهوش مافيش ' + 'ne pas non jamais aucun sans ' + 'nicht kein keine keinen nie ohne '
+  + 'nunca ningún ninguna sin ' + 'non mai nessun nessuna senza ' + 'değil yok hiç asla hayır ' + '不 没 没有 别 无').split(/\s+/));
+const words = (s) => new Set(s.replace(/['’]/g, '').split(' '));
+function changesMeaning(a, b) {
+  const A = words(a), B = words(b);
+  for (const w of A) if (!B.has(w) && CRITICAL.has(w)) return true;
+  for (const w of B) if (!A.has(w) && CRITICAL.has(w)) return true;
+  // Chinese has no spaces: look for the characters themselves
+  for (const ch of ['不', '没', '别', '无']) if (a.includes(ch) !== b.includes(ch)) return true;
+  return false;
+}
+
 function similarity(a, b) {
   // Levenshtein ratio on characters (sentences are short).
   if (a === b) return 1;
@@ -123,7 +137,7 @@ export class TranslationMemory {
   }
 
   /** A known translation for this sentence, or null. */
-  lookup(text, from, to) {
+  lookup(text, from, to, { fuzzy = true } = {}) {
     const n = norm(text);
     if (!n) return null;
     const hit = this.exact.get(`${from}|${to}|${n}`);
@@ -144,7 +158,7 @@ export class TranslationMemory {
     }
 
     // Near-identical sentence (a word misheard, "the"/"a"...). Numbers must be the same.
-    if (n.length >= 12) {
+    if (fuzzy && n.length >= 12) {
       const pk = `${from}|${to}|`;
       const counts = new Map();
       for (const g of grams(n)) for (const e of this.index.get(pk + g) || []) counts.set(e, (counts.get(e) || 0) + 1);
@@ -154,7 +168,7 @@ export class TranslationMemory {
         const s = similarity(n, e.n);
         if (s > bestScore) { best = e; bestScore = s; }
       }
-      if (best && bestScore >= 0.9 && numbersOf(best.src).join() === nums.join()) return { text: best.tr, how: 'similar', origin: best.origin, score: bestScore };
+      if (best && bestScore >= 0.9 && numbersOf(best.src).join() === nums.join() && !changesMeaning(n, best.n)) return { text: best.tr, how: 'similar', origin: best.origin, score: bestScore };
     }
     return null;
   }

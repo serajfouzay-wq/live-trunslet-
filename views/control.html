@@ -86,7 +86,7 @@
             <div class="chips" id="source"></div>
             <div class="checks" style="margin-top:14px">
               <label class="check"><input type="checkbox" id="multi"><span>Several people talking · label the speakers</span></label>
-              <label class="check"><input type="checkbox" data-set="fastMode"><span>Faster mode · translate while the speaker is still talking <em class="tag-soft">uses more Claude calls</em></span></label>
+              <label class="check"><input type="checkbox" data-set="fastMode"><span>Faster mode · translation appears while the speaker is still talking <em class="tag-soft">free with the offline pack, otherwise a few more Claude calls</em></span></label>
             </div>
             <p class="hint" id="auto-hint" hidden>Auto detects English, Spanish, French, Italian, German and a few more. For Arabic, Chinese or Turkish, pick the language.</p>
           </div>
@@ -305,9 +305,10 @@
             <input id="key-an" type="password" placeholder="Paste Anthropic API key" autocomplete="off">
             <label class="f" style="margin-top:14px">Model
               <select id="model">
-                <option value="claude-haiku-4-5">Claude Haiku 4.5 · fastest (recommended for live)</option>
+                <option value="claude-haiku-5-5">Claude Haiku 5.5 · fastest and cheapest (recommended for live)</option>
                 <option value="claude-sonnet-5-5">Claude Sonnet 5.5 · more nuance, a little slower</option>
                 <option value="claude-opus-5-5">Claude Opus 5.5 · best quality, slowest</option>
+                <option value="claude-haiku-4-5">Claude Haiku 4.5 · older</option>
               </select>
             </label>
             <div class="row gap"><button class="btn primary save-keys">Save</button><button class="btn" id="test-an">Test key</button><span class="hint test-result" id="test-result"></span></div>

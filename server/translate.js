@@ -44,18 +44,39 @@ const LIBYAN = `The Arabic comes from live speech recognition. Speakers often us
 حنا = we; هكي = like this; شوية = a little; باش = in order to; يعطيك الصحة = thank you; مرحبتين = welcome; درتو = you did.
 Speech recognition may contain errors (wrong or split words): infer the most likely intended meaning from context and translate that meaning, not word by word.`;
 
-/** The system prompt for this request (stable per event setup, so it caches well). */
-function systemFor({ from, eventType, dialect }) {
-  let sys = SYSTEM;
+/**
+ * The system prompt for this request. Everything that stays the same for the whole event (rules, event type,
+ * dialect notes, context, glossary) lives here and is cached by the API, so each sentence only sends itself.
+ */
+function systemFor({ from, eventType, dialect, context, glossary }, base = SYSTEM) {
+  let sys = base;
   if (eventType === 'government') sys += `\n\n${GOVERNMENT}`;
-  if (from === 'ar' && dialect !== 'msa') sys += `\n\n${LIBYAN}`;
-  return sys;
+  if (from === 'ar' && dialect !== 'msa' && base === SYSTEM) sys += `\n\n${LIBYAN}`;
+  if (context) sys += `\n\nEvent context: ${context}`;
+  if (glossary?.trim()) sys += `\n\nGlossary (source term = required rendering, optionally per language as "xx: wording"; a term alone means keep it exactly as written):\n${glossary.trim()}`;
+  return [{ type: 'text', text: sys, cache_control: { type: 'ephemeral' } }];
 }
+
+const STRONG_MODEL = 'claude-sonnet-5-5';
+let modelSwap = null; // { from, to } when the configured model is not available to this account
+const currentModel = () => (modelSwap && config.model === modelSwap.from ? modelSwap.to : config.model);
 
 /** Claude model for this sentence: Arabic speech can use the stronger model (dialect needs more nuance). */
 function modelFor({ from, strongArabic }) {
-  if (from === 'ar' && strongArabic !== false && /haiku/.test(config.model)) return 'claude-sonnet-5-5';
-  return config.model;
+  const m = currentModel();
+  if (from === 'ar' && strongArabic !== false && /haiku/.test(m)) return STRONG_MODEL;
+  return m;
+}
+
+/**
+ * Request settings for the lowest delay on each model. Translation needs no long reasoning, so thinking is
+ * turned off where the model allows it and kept to the minimum elsewhere.
+ */
+function shapeFor(model) {
+  if (/haiku-4-5/.test(model)) return {};
+  if (/haiku-5/.test(model)) return { thinking: { type: 'disabled' }, output_config: { effort: 'low' } };
+  if (/sonnet-5-5/.test(model)) return { thinking: { type: 'between_tools' }, output_config: { effort: 'low' } };
+  return { output_config: { effort: 'low' } };
 }
 
 const CLEAN_SYSTEM = `You clean up live speech-recognition transcripts of Arabic speech for display on a screen at an official event.
@@ -64,10 +85,8 @@ Keep every name, number and the speaker's meaning and order. Do not summarise, a
 
 ${LIBYAN}`;
 
-function buildUser({ text, from, to, history, glossary, context }) {
+function buildUser({ text, from, to, history }) {
   const parts = [];
-  if (context) parts.push(`Event context: ${context}`);
-  if (glossary) parts.push(`Glossary (source term = required rendering, or just a term to keep unchanged):\n${glossary}`);
   if (history?.length) {
     parts.push('Previous sentences (context only):\n' + history.map((h) => `- ${h.src}${h.tr ? `  =>  ${h.tr}` : ''}`).join('\n'));
   }
@@ -157,12 +176,15 @@ export async function translate(opts) {
   const { text, from, to, signal } = opts;
   if (from === to) return text;
 
-  const remembered = offline.memory.lookup(text, from, to) || (from === 'ar' && opts.dialect !== 'msa' ? offline.memory.lookup(normalizeLibyan(text), from, to) : null);
-  if (remembered) { lastEngine = 'memory'; opts.onDelta?.(remembered.text); return remembered.text; }
-
   const { mode } = translatorState();
   const canOffline = offline.mt.canTranslate(from, to);
   const preferOffline = mode === 'offline' || (mode === 'auto' && (!config.anthropicKey || Date.now() < offlineUntil));
+
+  // Known sentences come from memory. Online, only exact matches are used: a "nearly the same" sentence could
+  // differ in the one word that matters, and Claude is there to translate it properly.
+  const fuzzy = preferOffline || !config.anthropicKey;
+  const remembered = offline.memory.lookup(text, from, to, { fuzzy }) || (from === 'ar' && opts.dialect !== 'msa' ? offline.memory.lookup(normalizeLibyan(text), from, to, { fuzzy }) : null);
+  if (remembered) { lastEngine = 'memory'; opts.onDelta?.(remembered.text); return remembered.text; }
 
   if (preferOffline && canOffline) { lastEngine = 'offline'; return offlineTranslate(opts); }
   if (!getClient()) return demoTranslate(opts);
@@ -173,10 +195,22 @@ export async function translate(opts) {
     if (!signal && out) offline.memory.add(from, to, text, out, 'claude'); // the offline mode learns from Claude
     return out;
   } catch (e) {
-    if (e?.name === 'RefusalError' && canOffline) { lastEngine = 'offline'; return offlineTranslate(opts); }
-    if (e?.name !== 'AbortError' && mode !== 'claude' && canOffline && isNetworkError(e)) {
+    if (e?.name === 'AbortError' || (mode === 'claude' && e?.name !== 'RefusalError')) throw e;
+    if (e?.name === 'RefusalError') {
+      if (canOffline) { lastEngine = 'offline'; return offlineTranslate(opts); }
+      const used = modelFor(opts);
+      if (used !== STRONG_MODEL) { lastEngine = 'claude'; return claudeTranslate({ ...opts, model: STRONG_MODEL }); }
+      throw e;
+    }
+    if (canOffline && isNetworkError(e)) {
       if (Date.now() >= offlineUntil) log('warn', 'Claude unreachable: translating offline for now');
       offlineUntil = Date.now() + 45000;
+      lastEngine = 'offline';
+      return offlineTranslate(opts);
+    }
+    // Claude overloaded or rate-limited even after a retry: this sentence goes offline instead of waiting.
+    if (canOffline && (e?.status === 429 || e?.status >= 500)) {
+      log('warn', `Claude busy (${e.status}): this sentence was translated offline`);
       lastEngine = 'offline';
       return offlineTranslate(opts);
     }
@@ -185,37 +219,55 @@ export async function translate(opts) {
 }
 
 let fallbacksOk = true; // server-side refusal fallback (beta); switched off if the API does not accept it
+const shapeOk = new Set(); // models that accepted the low-delay settings
+const shapeBad = new Set(); // models that rejected them (sent plain from then on)
+
+async function streamOnce(c, params, reqOpts, onDelta) {
+  let acc = '';
+  const stream = c.messages.stream(params, reqOpts);
+  stream.on('text', (delta) => { acc += delta; onDelta?.(acc); });
+  const final = await stream.finalMessage();
+  return { final, acc };
+}
 
 async function claude({ system, user, model, maxTokens, onDelta, signal }) {
   const c = getClient();
   if (!c) throw new MissingKeyError();
   await takeSlot(signal);
   try {
-    const isHaiku = /haiku/.test(model);
-    const extra = isHaiku ? {} : { output_config: { effort: 'low' } };
-    const useFallbacks = fallbacksOk && /sonnet-5-5|opus-5-5/.test(model);
-    const params = { model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }], ...extra, ...(useFallbacks ? { fallbacks: 'default' } : {}) };
-    const reqOpts = { signal, timeout: 25000, maxRetries: 1, ...(useFallbacks ? { headers: { 'anthropic-beta': 'server-side-fallback-2026-07-01' } } : {}) };
-    let acc = '';
-    let final;
-    try {
-      const stream = c.messages.stream(params, reqOpts);
-      stream.on('text', (delta) => { acc += delta; onDelta?.(acc); });
-      final = await stream.finalMessage();
-    } catch (e) {
-      if (useFallbacks && e?.status === 400 && /fallback/i.test(e?.message || '')) {
-        fallbacksOk = false;
-        log('warn', 'refusal fallback not accepted by the API; continuing without it');
-        delete params.fallbacks;
-        acc = '';
-        const stream = c.messages.stream(params, { signal, timeout: 25000, maxRetries: 1 });
-        stream.on('text', (delta) => { acc += delta; onDelta?.(acc); });
-        final = await stream.finalMessage();
-      } else throw e;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const shape = shapeBad.has(model) ? {} : shapeFor(model);
+      const useFallbacks = fallbacksOk && /sonnet-5-5|opus-5-5|fable-5-1/.test(model);
+      const params = { model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }], ...shape, ...(useFallbacks ? { fallbacks: 'default' } : {}) };
+      const reqOpts = { signal, timeout: 25000, maxRetries: 1, ...(useFallbacks ? { headers: { 'anthropic-beta': 'server-side-fallback-2026-07-01' } } : {}) };
+      try {
+        const { final, acc } = await streamOnce(c, params, reqOpts, onDelta);
+        shapeOk.add(model);
+        if (final.stop_reason === 'refusal') throw Object.assign(new Error('Claude declined to translate this sentence'), { name: 'RefusalError' });
+        const out = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+        return out || acc.trim();
+      } catch (e) {
+        const msg = e?.message || '';
+        if (e?.status === 400 && useFallbacks && /fallback/i.test(msg)) {
+          fallbacksOk = false;
+          log('warn', 'refusal fallback not accepted by the API; continuing without it');
+          continue;
+        }
+        if (e?.status === 400 && !shapeBad.has(model) && !shapeOk.has(model) && /thinking|effort|output_config/i.test(msg)) {
+          shapeBad.add(model);
+          log('warn', `${model} rejected the low-delay settings; sending plain requests`);
+          continue;
+        }
+        if (e?.status === 404 && model === config.model && /haiku-5/.test(model)) {
+          modelSwap = { from: model, to: 'claude-haiku-4-5' };
+          log('warn', `${model} is not available to this API key; using claude-haiku-4-5`);
+          model = modelSwap.to;
+          continue;
+        }
+        throw e;
+      }
     }
-    if (final.stop_reason === 'refusal') throw Object.assign(new Error('Claude declined to translate this sentence'), { name: 'RefusalError' });
-    const out = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-    return out || acc.trim();
+    throw new Error('Claude request failed');
   } finally {
     freeSlot();
   }
@@ -226,7 +278,7 @@ async function claudeTranslate(opts) {
   return claude({
     system: systemFor(opts),
     user: buildUser(opts),
-    model: modelFor(opts),
+    model: opts.model || modelFor(opts),
     maxTokens: Math.min(4000, Math.max(300, text.length * 6)),
     onDelta: opts.onDelta,
     signal: opts.signal,
@@ -242,7 +294,7 @@ export async function cleanArabic(opts) {
   const { engine } = translatorState();
   if (engine === 'claude') {
     try {
-      return await claude({ system: CLEAN_SYSTEM, user: `<text>${text}</text>`, model: modelFor({ ...opts, from: 'ar' }), maxTokens: Math.min(3000, Math.max(200, text.length * 4)), onDelta, signal: opts.signal });
+      return await claude({ system: systemFor({ ...opts, from: 'ar', eventType: null }, CLEAN_SYSTEM), user: `<text>${text}</text>`, model: modelFor({ ...opts, from: 'ar' }), maxTokens: Math.min(3000, Math.max(200, text.length * 4)), onDelta, signal: opts.signal });
     } catch (e) {
       if (!isNetworkError(e) && e?.name !== 'RefusalError') throw e;
     }
@@ -292,10 +344,10 @@ export async function testAnthropic() {
   const c = getClient();
   if (!c) throw new MissingKeyError();
   const stream = c.messages.stream({
-    model: config.model,
-    max_tokens: 40,
+    model: currentModel(),
+    max_tokens: 200,
     messages: [{ role: 'user', content: 'Translate "Good evening" into French. Output only the translation.' }],
-    ...(/haiku/.test(config.model) ? {} : { output_config: { effort: 'low' } }),
+    ...shapeFor(currentModel()),
   }, { timeout: 20000, maxRetries: 0 });
   const r = await stream.finalMessage();
   return r.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();

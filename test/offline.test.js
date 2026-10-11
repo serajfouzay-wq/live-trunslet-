@@ -71,3 +71,29 @@ test('glossary: Arabic terms are found with attached و / ب / لل', () => {
   assert.equal(protect('رسالة للمجلس الرئاسي من بطرابلس', g).text, 'رسالة ل XQ1 من ب XQ2');
   assert.equal(protect('المجلس الرئاسيين', g).slots.length, 0, 'a longer word is not a match');
 });
+
+test('memory never reuses a "nearly the same" sentence that differs by a negation', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lt-mem-')), 'learned.jsonl');
+  const m = new TranslationMemory({ file });
+  m.add('en', 'fr', 'We will continue the session after the coffee break today.', 'Nous reprendrons la séance après la pause café aujourd’hui.');
+  assert.equal(m.lookup('We will not continue the session after the coffee break today.', 'en', 'fr'), null);
+  assert.equal(m.lookup('We will continue the sesion after the coffee break today.', 'en', 'fr').how, 'similar', 'a misheard letter still matches');
+  assert.equal(m.lookup('We will continue the sesion after the coffee break today.', 'en', 'fr', { fuzzy: false }), null, 'online: exact matches only');
+  m.add('ar', 'en', 'سنواصل الجلسة بعد استراحة القهوة اليوم', 'We will continue the session after the coffee break today.');
+  assert.equal(m.lookup('لن نواصل الجلسة بعد استراحة القهوة اليوم', 'ar', 'en'), null);
+});
+
+test('Libyan grammar: if, must, need, future, negation; formal Arabic stays untouched', async () => {
+  const { normalizeLibyan: n } = await import('../server/offline/arabic.js');
+  assert.equal(n('كان تبو تسألو، تفضلو توا.'), 'إذا تريدون أن تسألوا، تفضلوا الآن.');
+  assert.equal(n('لازم نخدمو مع بعض.'), 'يجب أن نعمل معًا.');
+  assert.equal(n('الصغار لازمهم مدارس باهية.'), 'الصغار يحتاجون مدارس جيدة.');
+  assert.equal(n('بعدين بنحكيو على الميزانية.'), 'بعد ذلك سنتكلم على الميزانية.');
+  assert.equal(n('ماتنساوش الاستمارة.'), 'لا تنسوا الاستمارة.');
+  assert.equal(n('الوزير راهو موجود معانا.'), 'الوزير موجود معنا.');
+  assert.equal(n('شنو رايكم؟'), 'ما رأيكم؟');
+  const formal = ['كان الوزير يتحدث عن الخطة الجديدة.', 'قعد الرئيس على المنصة.', 'الجو جميل في طرابلس اليوم.', 'كان هناك نقاش طويل حول الميزانية.',
+    'هذه الاتفاقية تخدم مصالح البلدين.', 'بعد أن انتهت الجلسة غادر الضيوف.', 'جاء الوفد من تونس صباح اليوم.', 'كانوا ينتظرون القرار منذ شهرين.',
+    'بنك ليبيا المركزي يعلن عن إجراءات جديدة.', 'بين الحكومة والبرلمان تعاون مستمر.', 'العضو الجديد في المجلس.'];
+  for (const t of formal) assert.equal(n(t), t);
+});

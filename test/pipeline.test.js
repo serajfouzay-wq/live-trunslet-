@@ -50,7 +50,7 @@ before(async () => {
     host: '127.0.0.1', port: 0,
     verifyClient: (info, cb) => {
       const q = new URL(info.req.url, 'http://x').searchParams;
-      dgConnections.push({ model: q.get('model'), language: q.get('language'), auth: info.req.headers.authorization, diarize: q.get('diarize') });
+      dgConnections.push({ model: q.get('model'), language: q.get('language'), auth: info.req.headers.authorization, diarize: q.get('diarize'), keyterms: q.getAll('keyterm') });
       // Pretend nova-3 does not know Chinese so the fallback to nova-2 is exercised.
       if (q.get('model') === 'nova-3' && q.get('language') === 'zh') return cb(false, 400, 'unsupported');
       if (q.get('language') === 'ar-LY') return cb(false, 400, 'unsupported');
@@ -129,13 +129,19 @@ test('typed line is translated with glossary, context and history; phones only g
   await ctl.until((m) => m.type === 'tr' && m.lang === 'ar' && m.done && m.text.includes('Seraj'));
 
   const call = anthropicCalls.find((c) => c.messages[0].content.includes('Seraj will talk'));
-  assert.equal(call.model, 'claude-haiku-4-5');
+  assert.equal(call.model, 'claude-haiku-5-5');
   assert.equal(call.stream, true);
+  assert.deepEqual(call.thinking, { type: 'disabled' }, 'no thinking delay for live translation');
+  assert.equal(call.output_config?.effort, 'low');
   const prompt = call.messages[0].content;
-  assert.match(prompt, /Energy conference/);
-  assert.match(prompt, /net zero = صافي الصفر/);
   assert.match(prompt, /Welcome to the summit\./, 'previous sentence is passed as context');
-  assert.match(call.system, /simultaneous interpreter/);
+  // Event-wide parts sit in the cached system prompt, so each sentence sends only itself.
+  const system = call.system.map((b) => b.text).join('\n');
+  assert.equal(call.system.at(-1).cache_control?.type, 'ephemeral');
+  assert.match(system, /simultaneous interpreter/);
+  assert.match(system, /Energy conference/);
+  assert.match(system, /net zero = صافي الصفر/);
+  assert.doesNotMatch(prompt, /Energy conference/);
   ctl.ws.close(); phoneFr.ws.close();
 });
 
@@ -156,7 +162,8 @@ test('Deepgram: falls back to nova-2, streams audio, builds a Chinese segment', 
   ctl.send({ type: 'start', engine: 'deepgram' });
   await ctl.until((m) => m.type === 'status' && m.stt?.state === 'connected');
   const models = dgConnections.filter((c) => c.language === 'zh').map((c) => c.model);
-  assert.deepEqual(models, ['nova-3', 'nova-2']);
+  assert.deepEqual(models, ['nova-3', 'nova-3', 'nova-2'], 'nova-3 with key terms, without, then nova-2');
+  assert.deepEqual(dgConnections.filter((c) => c.language === 'zh').map((c) => c.keyterms.length > 0), [true, false, false]);
   assert.equal(dgConnections.at(-1).auth, 'Token dg-key');
   assert.equal(dgConnections.at(-1).diarize, 'true');
 
@@ -320,8 +327,22 @@ test('Libyan Arabic: Deepgram is asked for ar-LY first and falls back to Arabic 
   ctl.send({ type: 'source', lang: 'ar', speakerMode: 'single' });
   ctl.send({ type: 'start', engine: 'deepgram' });
   await ctl.until((m) => m.type === 'status' && m.stt?.state === 'connected');
-  const tried = dgConnections.filter((c) => c.language?.startsWith('ar')).map((c) => `${c.model}/${c.language}`);
+  const tried = [...new Set(dgConnections.filter((c) => c.language?.startsWith('ar')).map((c) => `${c.model}/${c.language}`))];
   assert.deepEqual(tried.slice(0, 2), ['nova-3/ar-LY', 'nova-3/ar']);
+  ctl.send({ type: 'stop' });
+  ctl.ws.close();
+});
+
+test('glossary names are sent to Deepgram as key terms', async () => {
+  await api('PATCH', '/settings', { glossary: 'Seraj Fouzay\nnet zero = ar: صافي الصفر\nالمجلس الرئاسي = en: the Presidential Council', sourceLang: 'en' });
+  const ctl = client('control');
+  await ctl.ready;
+  const before = dgConnections.length;
+  ctl.send({ type: 'source', lang: 'en', speakerMode: 'single' });
+  ctl.send({ type: 'start', engine: 'deepgram' });
+  await ctl.until((m) => m.type === 'status' && m.stt?.state === 'connected');
+  const first = dgConnections.slice(before).find((c) => c.language === 'en');
+  assert.deepEqual(first.keyterms.sort(), ['Presidential Council', 'Seraj Fouzay', 'net zero'].sort());
   ctl.send({ type: 'stop' });
   ctl.ws.close();
 });

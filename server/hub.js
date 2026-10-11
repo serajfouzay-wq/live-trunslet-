@@ -6,8 +6,9 @@ import { DIRS, config } from './config.js';
 import { LANGUAGES } from './languages.js';
 import { DEFAULT_SETTINGS, sanitize, saveSettings, viewerSettings } from './settings.js';
 import { detectLang } from './detect.js';
-import { translate, explain, isFatal, translatorState, cleanArabic } from './translate.js';
+import { translate, explain, isFatal, translatorState, cleanArabic, offlineTranslate } from './translate.js';
 import { createLocalStt } from './offline/stt.js';
+import { parseGlossary } from './offline/glossary.js';
 import { offline } from './offline/manager.js';
 import { log } from './log.js';
 import { createDeepgram } from './stt/deepgram.js';
@@ -49,7 +50,7 @@ export class Hub {
     this.joinUrl = '';
     this.pipe = freshPipe();
     this.announcement = null;
-    this.draft = { lastAt: 0, lastLen: 0, ctl: new Map(), text: {}, timers: new Map() };
+    this.draft = { lastAt: 0, lastLen: 0, ctl: new Map(), text: {}, timers: new Map(), busy: new Set(), epoch: 0 };
     this.newSession();
   }
 
@@ -386,6 +387,7 @@ export class Hub {
       tr: {},
       trDone: {},
       trErr: {},
+      rev: 0,
     };
     this.pipe.segments += 1;
     this.stopDrafts(seg);
@@ -415,7 +417,7 @@ export class Hub {
   translateSeg(seg, langs) {
     for (const lang of langs) {
       if (seg.trDone[lang]) continue;
-      const key = `${seg.id}:${lang}`;
+      const key = `${seg.id}:${seg.rev || 0}:${lang}`;
       if (this.inflight.has(key)) continue;
       if (lang === seg.src && !(lang === 'ar' && this.settings.arabicDisplay === 'formal' && this.engine !== 'demo')) {
         seg.tr[lang] = seg.text;
@@ -429,6 +431,8 @@ export class Hub {
   }
 
   async runTranslation(seg, lang, attempt = 0) {
+    const rev = seg.rev || 0;
+    const stale = () => (seg.rev || 0) !== rev; // the operator corrected the sentence meanwhile
     const idx = this.segments.indexOf(seg);
     const history = this.segments.slice(Math.max(0, idx - 3), Math.max(0, idx)).map((s) => ({ src: s.text, tr: s.tr[lang] }));
     const t0 = Date.now();
@@ -443,11 +447,17 @@ export class Hub {
         to: lang,
         history,
         onDelta: (partial) => {
+          if (stale()) return;
+          // Keep showing the (longer) draft until the real translation catches up: text never shrinks back.
+          if (seg.hold?.[lang] && partial.length < seg.hold[lang]) return;
+          if (seg.hold) delete seg.hold[lang];
           seg.tr[lang] = partial;
           seg.trErr[lang] = false;
           this.emitTr(seg, lang, false);
         },
       });
+      if (stale()) return;
+      if (seg.hold) delete seg.hold[lang];
       seg.tr[lang] = out;
       seg.trDone[lang] = true;
       seg.trErr[lang] = false;
@@ -456,7 +466,7 @@ export class Hub {
       this.emitTr(seg, lang, true);
       this.persist();
     } catch (e) {
-      if (e?.name === 'AbortError') return;
+      if (e?.name === 'AbortError' || stale()) return;
       if (!isFatal(e) && attempt < 1) {
         log('warn', `translation to ${lang} failed (${e.message}); retrying`);
         await sleep(1500);
@@ -467,9 +477,20 @@ export class Hub {
       this.pipe.trFail += 1;
       this.pipe.lastError = why;
       seg.trErr[lang] = true;
+      if (seg.hold?.[lang]) { delete seg.hold[lang]; } // keep the draft text rather than a blank
       this.emitTr(seg, lang, false);
       this.notify('error', why);
     }
+  }
+
+  /** Glossary words as the speaker will say them (names to keep, terms in the spoken language). */
+  keyterms(lang) {
+    const out = [];
+    for (const e of parseGlossary(this.settings.glossary)) {
+      if (e.keep || detectLang(e.term, lang) === lang) out.push(e.term);
+      if (e.byLang[lang]) out.push(e.byLang[lang].replace(/^(the|le|la|les|el|los|il|der|die|das)\s+/i, ''));
+    }
+    return out;
   }
 
   /** Settings every translation needs (event type, Arabic dialect, model choice). */
@@ -496,11 +517,24 @@ export class Hub {
     const cjk = part.lang === 'zh';
     const units = cjk ? part.text.length / 2 : part.text.split(/\s+/).length;
     const now = Date.now();
-    if (units < 4 || now - this.draft.lastAt < 1500 || part.text.length - this.draft.lastLen < (cjk ? 5 : 14)) return;
+    // The offline engine answers in a fraction of a second, so its drafts can follow the speaker more closely.
+    const local = this.wantedLangs().some((l) => l !== part.lang && this.offlineDrafts(part.lang, l));
+    if (units < (local ? 3 : 4) || now - this.draft.lastAt < (local ? 700 : 1500) || part.text.length - this.draft.lastLen < (cjk ? 4 : local ? 8 : 14)) return;
     this.draft.lastAt = now;
     this.draft.lastLen = part.text.length;
+    const epoch = this.draft.epoch;
     for (const lang of this.wantedLangs()) {
       if (lang === part.lang) continue;
+      // Drafts come from the offline engine on this laptop when it can (instant and free); Claude otherwise.
+      if (this.offlineDrafts(part.lang, lang)) {
+        if (this.draft.busy.has(lang)) continue; // still working on the previous draft: skip, never queue up
+        this.draft.busy.add(lang);
+        offlineTranslate({ ...this.langOpts(), text: part.text, from: part.lang, to: lang })
+          .then((text) => { if (this.draft.epoch === epoch) { this.draft.text[lang] = text; this.emitDraft(lang); } })
+          .catch((e) => log('warn', `offline draft to ${lang} failed: ${e.message}`))
+          .finally(() => this.draft.busy.delete(lang));
+        continue;
+      }
       this.draft.ctl.get(lang)?.abort();
       const ctl = new AbortController();
       this.draft.ctl.set(lang, ctl);
@@ -513,22 +547,31 @@ export class Hub {
     }
   }
 
+  /** Fast mode can use the free offline engine for drafts when its models are installed. */
+  offlineDrafts(from, to) {
+    return config.translationMode !== 'claude' && offline.translationReady() && offline.mt.canTranslate(from, to);
+  }
+
   emitDraft(lang) {
     if (this.draft.timers.has(lang)) return;
     this.draft.timers.set(lang, setTimeout(() => {
       this.draft.timers.delete(lang);
       const msg = JSON.stringify({ type: 'draft', lang, text: this.draft.text[lang] || '' });
-      for (const c of this.clients) if ((c.role === 'display' || c.role === 'control') && this.wants(c, lang) && c.ws.readyState === WebSocket.OPEN) c.ws.send(msg);
+      for (const c of this.clients) if (this.wants(c, lang) && c.ws.readyState === WebSocket.OPEN) c.ws.send(msg);
     }, 80));
   }
 
   /** The sentence ended: cancel pending drafts and use the latest one as the first text of the real translation. */
   stopDrafts(seg) {
+    this.draft.epoch += 1; // offline drafts still running belong to the finished sentence: drop them
     for (const ctl of this.draft.ctl.values()) ctl.abort();
     this.draft.ctl.clear();
     for (const t of this.draft.timers.values()) clearTimeout(t);
     this.draft.timers.clear();
-    if (seg) for (const [lang, text] of Object.entries(this.draft.text)) if (text && lang !== seg.src) seg.tr[lang] = text;
+    if (seg) {
+      seg.hold = {};
+      for (const [lang, text] of Object.entries(this.draft.text)) if (text && lang !== seg.src) { seg.tr[lang] = text; seg.hold[lang] = text.length; }
+    }
     this.draft.text = {};
     this.draft.lastAt = 0;
     this.draft.lastLen = 0;
@@ -553,6 +596,8 @@ export class Hub {
     const seg = this.segments.find((s) => s.id === id);
     if (!seg || typeof text !== 'string' || !text.trim()) return;
     seg.text = text.trim().slice(0, 4000);
+    seg.rev = (seg.rev || 0) + 1;
+    seg.hold = {};
     seg.tr = {};
     seg.trDone = {};
     seg.trErr = {};
@@ -626,6 +671,7 @@ export class Hub {
       multi: auto,
       dialect: this.settings.arabicDialect,
       diarize: this.settings.speakerMode === 'multi',
+      keyterms: this.keyterms(auto ? 'en' : this.settings.sourceLang),
       onResult: (ev) => this.ingestStt(ev),
       onStatus: ({ state, detail }) => {
         this.setStt(state, detail);

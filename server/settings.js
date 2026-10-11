@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS = {
   blank: false,
   sourceLang: 'en', // a language code or "auto"
   speakerMode: 'single', // single | multi
-  fastMode: false, // translate while the speaker is still talking (more API calls, much lower delay)
+  fastMode: true, // translate while the speaker is still talking (free with the offline pack, much lower delay)
   eventType: 'government', // general | government (formal register, titles, protocol)
   arabicDialect: 'ly', // ly (Libyan) | msa (formal Arabic) | other
   arabicDisplay: 'formal', // spoken (exact recognised words) | formal (cleaned into formal Arabic)
@@ -103,7 +103,10 @@ export function sanitize(patch) {
 
 export function loadSettings() {
   try {
-    const saved = sanitize(JSON.parse(fs.readFileSync(path_, 'utf8')));
+    const raw = JSON.parse(fs.readFileSync(path_, 'utf8'));
+    const saved = sanitize(raw);
+    // Version 2: drafts are now free (offline engine) or cheap, so faster mode is on for everyone once.
+    if (!(raw.v >= 2)) saved.fastMode = true;
     // Settings saved before a language existed: offer new languages to phones by default.
     if (saved.phoneLangs && saved.phoneLangs.length === LANG_CODES.length - 1 && !saved.phoneLangs.includes('de')) saved.phoneLangs.push('de');
     return { ...DEFAULT_SETTINGS, ...saved };
@@ -116,7 +119,7 @@ let timer;
 export function saveSettings(settings) {
   clearTimeout(timer);
   timer = setTimeout(() => {
-    try { fs.writeFileSync(path_, JSON.stringify(settings, null, 2)); } catch { /* ignore */ }
+    try { fs.writeFileSync(path_, JSON.stringify({ ...settings, v: 2 }, null, 2)); } catch { /* ignore */ }
   }, 400);
 }
 

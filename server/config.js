@@ -17,7 +17,7 @@ const FILE = path.join(DATA, 'config.json');
 const defaults = {
   deepgramKey: '',
   anthropicKey: '',
-  model: 'claude-haiku-4-5',
+  model: 'claude-haiku-5-5',
   sttEngine: 'auto', // auto | deepgram | local | browser | demo
   port: 3000,
   publicHost: '', // override the LAN address shown in the QR code
@@ -27,6 +27,8 @@ const defaults = {
 
 let cfg = { ...defaults };
 try { cfg = { ...defaults, ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch { /* first run */ }
+// The old default model: move to its faster, ~10x cheaper successor (falls back automatically if unavailable).
+if (cfg.model === 'claude-haiku-4-5' && !cfg.modelKept) cfg.model = 'claude-haiku-5-5';
 if (process.env.DEEPGRAM_API_KEY) cfg.deepgramKey = process.env.DEEPGRAM_API_KEY;
 if (process.env.ANTHROPIC_API_KEY) cfg.anthropicKey = process.env.ANTHROPIC_API_KEY;
 if (process.env.PORT) cfg.port = Number(process.env.PORT);
@@ -40,6 +42,7 @@ export function saveConfig(patch) {
       // Empty string for a key means "leave unchanged" so the UI never has to echo secrets back.
       if ((k === 'deepgramKey' || k === 'anthropicKey') && patch[k].trim() === '') continue;
       cfg[k] = patch[k].trim();
+      if (k === 'model') cfg.modelKept = cfg.model === 'claude-haiku-4-5'; // chosen on purpose: keep it
     }
   }
   if (patch.clearDeepgramKey) cfg.deepgramKey = '';
