@@ -199,6 +199,7 @@ export class Hub {
       avgMs: p.trOk ? Math.round(p.trMs / p.trOk) : null,
       lastError: p.lastError,
       stt: this.stt,
+      local: p.local || null,
     };
   }
 
@@ -330,9 +331,10 @@ export class Hub {
     }
 
     if (ev.final) {
-      if (text) {
+      const fresh = this.dropPromoted(text);
+      if (fresh) {
         if (!this.buf.text) this.buf.t0 = Date.now();
-        this.buf.text = join(this.buf.text, text);
+        this.buf.text = join(this.buf.text, fresh);
       }
       this.interim = '';
       const words = this.buf.lang === 'zh' ? this.buf.text.length / 2 : this.buf.text.split(/\s+/).length;
@@ -342,15 +344,49 @@ export class Hub {
     } else {
       if (!this.buf.text && text) this.buf.t0 = this.buf.t0 || Date.now();
       this.interim = text;
-      this.scheduleFlush(2500);
+      this.scheduleFlush(2500, true);
     }
     this.pushPartial();
     this.maybeDraft();
   }
 
-  scheduleFlush(ms = 1800) {
+  scheduleFlush(ms = 1800, interim = false) {
     clearTimeout(this.flushTimer);
-    this.flushTimer = setTimeout(() => this.commit(), ms);
+    this.flushTimer = setTimeout(() => (interim ? this.promoteInterim() : this.commit()), ms);
+  }
+
+  /**
+   * Words were previewed but the speech engine never confirmed them (no "final" result arrived in time): keep
+   * them anyway, so nothing that was heard is lost. If the confirmation arrives later, the part already shown is
+   * not repeated (see dropPromoted).
+   */
+  promoteInterim() {
+    const text = this.interim.trim();
+    if (text) {
+      if (!this.buf.text) this.buf.t0 = this.buf.t0 || Date.now();
+      this.buf.text = join(this.buf.text, text);
+      this.promoted = { words: text.split(/\s+/), at: Date.now() };
+      log('info', 'speech: kept previewed words that were never confirmed');
+    }
+    this.interim = '';
+    this.commit();
+  }
+
+  /** A late "final" for words that were already kept from the preview: return only what is new. */
+  dropPromoted(text) {
+    const pr = this.promoted;
+    if (!pr || !text || Date.now() - pr.at > 30000) return text;
+    this.promoted = null;
+    const clean = (w) => w.toLowerCase().replace(/[\p{P}\p{S}]/gu, '');
+    const words = text.split(/\s+/);
+    let i = 0;
+    while (i < words.length && i < pr.words.length && clean(words[i]) === clean(pr.words[i])) i += 1;
+    // Mostly the same start (speech engines revise a word or two): skip the part already shown.
+    if (i >= Math.min(3, pr.words.length) || i >= pr.words.length * 0.6) {
+      const skip = Math.max(i, Math.min(words.length, pr.words.length));
+      return words.slice(skip).join(' ');
+    }
+    return text;
   }
 
   currentPartial() {
@@ -549,7 +585,8 @@ export class Hub {
 
   /** Fast mode can use the free offline engine for drafts when its models are installed. */
   offlineDrafts(from, to) {
-    return config.translationMode !== 'claude' && offline.translationReady() && offline.mt.canTranslate(from, to);
+    // Not while offline speech recognition runs: it needs the processor more (drafts would slow the text down).
+    return this.engine !== 'local' && config.translationMode !== 'claude' && offline.translationReady() && offline.mt.canTranslate(from, to);
   }
 
   emitDraft(lang) {
@@ -701,6 +738,17 @@ export class Hub {
       quality: config.speechQuality,
       onResult: (ev) => this.ingestStt(ev),
       onStatus: ({ state, detail }) => { this.setStt(state, detail); if (state === 'error') this.notify('error', detail); },
+      onNotice: (level, message) => { log('warn', message); this.notify(level, message); },
+      onStat: (st) => {
+        const l = (this.pipe.local ||= { heard: 0, empty: 0 });
+        l.model = st.model;
+        if (st.warmMs != null && st.speechMs == null) { l.warmMs = st.warmMs; log('info', `offline speech ready: ${st.model} model, ${st.warmMs} ms per decode`); return; }
+        l.heard += 1;
+        if (st.empty) l.empty += 1;
+        l.lastDecodeMs = st.decodeMs;
+        l.lastSpeechMs = st.speechMs;
+        log('info', `offline speech: ${(st.speechMs / 1000).toFixed(1)} s of speech decoded in ${(st.decodeMs / 1000).toFixed(1)} s${st.empty ? ' (no words)' : ''}`);
+      },
     });
   }
 

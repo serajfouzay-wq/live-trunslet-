@@ -346,3 +346,17 @@ test('glossary names are sent to Deepgram as key terms', async () => {
   ctl.send({ type: 'stop' });
   ctl.ws.close();
 });
+
+test('previewed words are kept even if the speech engine never confirms them, and not repeated later', async () => {
+  await api('PATCH', '/settings', { screenLangs: ['en', 'fr'], sourceLang: 'en', fastMode: false, glossary: '' });
+  const ctl = client('control');
+  await ctl.ready;
+  ctl.send({ type: 'stt', text: 'The minister has arrived in Tripoli', final: false, lang: 'en' });
+  const seg = await ctl.until((m) => m.type === 'segment' && m.seg.text === 'The minister has arrived in Tripoli', 6000);
+  await ctl.until((m) => m.type === 'tr' && m.id === seg.seg.id && m.lang === 'fr' && m.done);
+  // the late confirmation repeats those words and adds new ones: only the new part becomes a sentence
+  ctl.send({ type: 'stt', text: 'The minister has arrived in Tripoli this morning.', final: true, speechFinal: true, lang: 'en' });
+  const next = await ctl.until((m) => m.type === 'segment' && m.seg.id !== seg.seg.id);
+  assert.equal(next.seg.text, 'this morning.');
+  ctl.ws.close();
+});

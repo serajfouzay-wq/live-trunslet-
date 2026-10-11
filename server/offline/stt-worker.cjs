@@ -14,6 +14,13 @@ let lastPartial = 0;
 let preroll = []; // the last ~0.5 s before speech is detected, so the first word is not lost
 let wasDetected = false;
 const WINDOW = 512;
+const HALLUCINATION = new RegExp('^(' + [
+  '\\[.*\\]', '\\(.*\\)', '♪+', 'you', 'thank you', 'thanks for watching', 'thank you for watching', 'please subscribe',
+  'subtitles by the amara\\.org community', '.*amara\\.org.*',
+  'اشتركوا في( القناة)?', 'اشترك في القناة', 'شكرا للمشاهدة', 'شكرًا للمشاهدة', 'ترجمة نانسي قنقر', 'نانسي قنقر', 'شكرا', 'شكرًا',
+  'grazie a tutti', 'grazie per la visione', 'sottotitoli.*', 'merci d.avoir regardé', 'sous-titr.*', 'gracias por ver', 'subtítulos.*',
+  'vielen dank fürs zuschauen', 'untertitel.*', 'izlediğiniz için teşekkürler', 'altyazı.*', '请不吝点赞.*', '字幕.*', '谢谢观看',
+].join('|') + ')$', 'iu');
 const RATE = 16000;
 
 function init(o) {
@@ -29,7 +36,10 @@ function init(o) {
       tokens: o.tokens, numThreads: o.threads || 2, provider: 'cpu', debug: 0,
     },
   });
-  parentPort.postMessage({ type: 'ready' });
+  // Warm up and time one decode: tells the app whether this laptop is fast enough for this model.
+  const t0 = Date.now();
+  try { transcribe(new Float32Array(RATE)); } catch { /* timing only */ }
+  parentPort.postMessage({ type: 'ready', warmMs: Date.now() - t0 });
 }
 
 function transcribe(samples) {
@@ -37,10 +47,19 @@ function transcribe(samples) {
   st.acceptWaveform({ samples, sampleRate: RATE });
   rec.decode(st);
   const r = rec.getResult(st);
-  const text = (r.text || '').trim();
-  // Whisper sometimes "hears" these in silence or noise.
-  if (!text || /^(\[.*\]|\(.*\)|♪+|thank you\.?|thanks for watching!?|you)$/i.test(text)) return null;
+  // Whisper can get stuck repeating a word ("نحن نحن نحن نحن…"): keep it once.
+  const text = (r.text || '').trim().replace(/(\S+)(\s+\1){3,}/gu, '$1');
+  // Whisper sometimes "hears" these in silence or noise (subtitle credits and video sign-offs it was trained on).
+  if (!text || HALLUCINATION.test(text.replace(/[.!?。！？،,]+$/u, '').trim())) return null;
   return { text, lang: (r.lang || '').replace(/[<|>]/g, '') || undefined };
+}
+
+/** Transcribe a finished utterance and report how long it took (shown in the app and its diagnostics). */
+function finalOf(samples) {
+  const t0 = Date.now();
+  const r = transcribe(samples);
+  parentPort.postMessage({ type: 'stat', speechMs: Math.round((samples.length / RATE) * 1000), decodeMs: Date.now() - t0, empty: !r });
+  if (r) parentPort.postMessage({ type: 'final', ...r });
 }
 
 function onAudio(buf) {
@@ -67,8 +86,7 @@ function onAudio(buf) {
       const seg = vad.front(false);
       vad.pop();
       speech = []; speechLen = 0;
-      const r = transcribe(seg.samples);
-      if (r) parentPort.postMessage({ type: 'final', ...r });
+      finalOf(seg.samples);
     }
   }
   window = f.slice(off);
@@ -87,10 +105,11 @@ function onAudio(buf) {
 parentPort.on('message', (m) => {
   try {
     if (m.type === 'init') init(m.opts);
+    else if (m.type === 'partials') opts.partials = !!m.on;
     else if (m.type === 'audio' && rec) onAudio(m.data);
     else if (m.type === 'flush' && vad) {
       vad.flush();
-      while (!vad.isEmpty()) { const seg = vad.front(false); vad.pop(); const r = transcribe(seg.samples); if (r) parentPort.postMessage({ type: 'final', ...r }); }
+      while (!vad.isEmpty()) { const seg = vad.front(false); vad.pop(); finalOf(seg.samples); }
       speech = []; speechLen = 0;
     }
   } catch (e) {

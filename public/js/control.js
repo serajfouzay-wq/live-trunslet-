@@ -158,14 +158,19 @@ function renderPipe() {
   if (engine === 'browser') setNode('n-stt', 'ok', 'Browser');
   else if (st.state === 'error') { setNode('n-stt', 'bad', st.detail || 'Error'); advice ||= `Speech service problem: ${st.detail || 'unknown'}.`; }
   else if (st.state === 'connecting') setNode('n-stt', 'warn', 'Connecting…');
-  else if (st.state === 'connected') setNode('n-stt', 'ok', engine === 'deepgram' ? `Deepgram · ${p.audioKB ?? 0} KB` : engine === 'local' ? 'Offline · this laptop' : 'Connected');
+  else if (st.state === 'connected') {
+    const l = p.local;
+    const ms = l?.lastDecodeMs ?? l?.warmMs;
+    setNode('n-stt', 'ok', engine === 'deepgram' ? `Deepgram · ${p.audioKB ?? 0} KB` : engine === 'local' ? `Offline · ${l?.model || 'this laptop'}${ms != null ? ` · ${(ms / 1000).toFixed(1)} s` : ''}` : 'Connected');
+  }
   else setNode('n-stt', 'warn', 'Starting…');
 
   // text coming back
   if ((engine === 'deepgram' || engine === 'local') && sinceStart > 9000 && !p.results && lastSound && Date.now() - lastSound < 4000) {
     setNode('n-txt', 'warn', 'No text yet');
     advice ||= `The speech service hears audio but returned no text. Check that the speaker's language (${store.settings.sourceLang === 'auto' ? 'Auto' : store.langs[store.settings.sourceLang]?.name}) is right, and speak a little louder or closer.`;
-  } else if (p.results) setNode('n-txt', p.textAgo != null && p.textAgo < 20000 ? 'ok' : 'warn', `${p.segments || 0} sentence${p.segments === 1 ? '' : 's'}`);
+  } else if (p.results && !p.segments) setNode('n-txt', 'ok', 'Hearing words…');
+  else if (p.results) setNode('n-txt', p.textAgo != null && p.textAgo < 20000 ? 'ok' : 'warn', `${p.segments || 0} sentence${p.segments === 1 ? '' : 's'}`);
   else setNode('n-txt', 'warn', 'Listening…');
 
   // translation
